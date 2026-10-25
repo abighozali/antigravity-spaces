@@ -1,0 +1,30 @@
+# Secrets, OAuth state, and local session data
+.env
+*.pwd
+*.key
+*.pem
+*oauth-token*
+.gemini/
+.cache/
+.config/
+
+# Compiled binaries & runtime artifacts
+agy-server
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+node_modules/
+workspace/
+uploads/
+*.db
+*.sqlite
+*.sqlite3
+*.jsonl
+*.log
+
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/

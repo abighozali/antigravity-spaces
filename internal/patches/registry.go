@@ -1,0 +1,3004 @@
+package patches
+
+import (
+	"encoding/json"
+	"regexp"
+)
+
+// Adaptive regular expressions matching across Antigravity 2.8.x, 2.9.x and future minified builds.
+var (
+	modelEffortRe = regexp.MustCompile(`,?onClick:(?:[a-zA-Z0-9_$]+\?void 0:)?\(\)=>\{var [a-zA-Z0-9_$]+=[\r\n\s]*[a-zA-Z0-9_$]+\.byEffort\.get\([a-zA-Z0-9_$]+\);[a-zA-Z0-9_$]+&&[a-zA-Z0-9_$]+\([a-zA-Z0-9_$]+\)\}`)
+
+	signInButtonRe = regexp.MustCompile(`onClick:\(\)=>[\r\n\s]*(?:\{[\r\n\s]*(?:\w+\(\);[\r\n\s]*)?\w+\.showLoginFlow\(\)[\r\n\s]*\}|\w+\.showLoginFlow\(\))`)
+
+	authServiceLoginRedirectRe     = regexp.MustCompile(`async loginWithRedirect\(([a-zA-Z0-9_$]+)\)\{`)
+	authServiceShowLoginFlowRe     = regexp.MustCompile(`async showLoginFlow\(\)\{`)
+	authServiceStubLoginRedirectRe = regexp.MustCompile(`loginWithRedirect:async\(\)=>\{console\.log\("\[AuthService\] loginWithRedirect"\)\},showLoginFlow:async\(\)=>\{console\.log\("\[AuthService\] showLoginFlow"\)\}`)
+
+	skipOnboardingRe = regexp.MustCompile(`c\.hasOnboardingScreens&&[a-zA-Z0-9_$]+!==2&&(?:\([a-zA-Z0-9_$]+\(\),[a-zA-Z0-9_$]+\(\{to:"/onboarding",(?:search:[a-zA-Z0-9_$]+,)?replace:!0,throw:!0\}\)\)|[a-zA-Z0-9_$]+\(\{to:"/onboarding",(?:search:[a-zA-Z0-9_$]+,)?replace:!0,throw:!0\}\))`)
+
+	mobileEnterNewlineRe                = regexp.MustCompile(`registerCommand\(([a-zA-Z0-9_$]+),([a-zA-Z0-9_$]+)=>\{if\(![a-zA-Z0-9_$]+\)return!1;((?:var [a-zA-Z0-9_$]+=[a-zA-Z0-9_$]+\.shiftKey&&\([a-zA-Z0-9_$]+\.metaKey\|\|[a-zA-Z0-9_$]+\.ctrlKey\);if\([a-zA-Z0-9_$]+\.shiftKey&&![a-zA-Z0-9_$]+\)return!1;)?)[a-zA-Z0-9_$]+\.preventDefault\(\);`)
+	mobileProjectAddButtonRe            = regexp.MustCompile(`if\((\w+)==="project"\|\|(\w+)==="environment"\|\|(\w+)==="status"\)\{let\s+([a-zA-Z0-9_$]+)=([a-zA-Z0-9_$]+)\?void 0:([a-zA-Z0-9_$]+)==="project"\?"New Conversation in Project":([a-zA-Z0-9_$]+)==="environment"\?"New Conversation in Workspace":[\r\n\s]*void 0`)
+	mobileProjectHeaderActionsRe        = regexp.MustCompile(`className:[a-zA-Z0-9_$]+\("absolute right-1 top-0 flex h-full items-center gap-1",([a-zA-Z0-9_$]+)\|\|([a-zA-Z0-9_$]+)\?"opacity-100":"opacity-0 group-hover\/header:opacity-100 group-focus-within\/header:opacity-100"\)`)
+	mobileProjectKebabMenuRe            = regexp.MustCompile(`,([a-zA-Z0-9_$]+)=\(0,([a-zA-Z0-9_$]+)\.useContext\)\(([a-zA-Z0-9_$]+)\),([a-zA-Z0-9_$]+)=[a-zA-Z0-9_$]+\(\)&&[a-zA-Z0-9_$]+!==null,|(function [a-zA-Z0-9_$]+\(a\)\{var \{isOpen:b,onOpenChange:c,ariaLabel:e,sortMode:f,onSortModeChange:g,size:h="icon"\}=a;a=[a-zA-Z0-9_$]+\(a\);return )[a-zA-Z0-9_$]+\(\)\|\|(a\.length===0&&!g\?null:)`)
+	mobileProjectAddClickCloseSidebarRe = regexp.MustCompile(`onClick:([a-zA-Z0-9_$]+)=>[\r\n\s]*\{([a-zA-Z0-9_$]+)\.stopPropagation\(\);([a-zA-Z0-9_$]+)\([a-zA-Z0-9_$]+\)\|\|\([a-zA-Z0-9_$]+\.preventDefault\(\),([a-zA-Z0-9_$]+)\([a-zA-Z0-9_$]+\)\)\}`)
+	mobileProjectSortOrderRe            = regexp.MustCompile(`if\(([a-zA-Z0-9_$]+)\.length===0\)return ([a-zA-Z0-9_$]+\([a-zA-Z0-9_$]+,[a-zA-Z0-9_$]+,([a-zA-Z0-9_$]+),[a-zA-Z0-9_$]+(?:,[a-zA-Z0-9_$]+)?\)\.map\([a-zA-Z0-9_$]+\));`)
+	mobileProjectSettingsExportRe       = regexp.MustCompile(`function ([a-zA-Z0-9_$]+)\(\)\{var a=[a-zA-Z0-9_$]+\([a-zA-Z0-9_$]+\),b=[a-zA-Z0-9_$]+\([a-zA-Z0-9_$]+\),c=[a-zA-Z0-9_$]+\(\),e=[a-zA-Z0-9_$]+\(\),\{logEvent:f\}=[a-zA-Z0-9_$]+\(\),\[g,h\]=[a-zA-Z0-9_$]+\("main"\)`)
+	mobileSettingsProjectsRe            = regexp.MustCompile(
+		`(var [a-zA-Z0-9_$]+=\(\)=>\{var a=[a-zA-Z0-9_$]+\(\),(?:\{settingsFeature:b\}=\(0,[a-zA-Z0-9_$]+\.useContext\)\([a-zA-Z0-9_$]+\),c=!![a-zA-Z0-9_$]+\(\)\.get\("settings"\)\?\.hideShortcuts,|b=[a-zA-Z0-9_$]+\(\),c=b\.get\("settingsFeature"\)\?\?[a-zA-Z0-9_$]+\.settingsFeature;b=!!b\.get\("settings"\)\?\.hideShortcuts;var )\{sharedNavItems:e,globalScreens:f,workspaces:g,showWorkspacesSection:h\}=[a-zA-Z0-9_$]+\(\);` +
+			`[bc]=\[\.\.\.e\.filter\([a-zA-Z0-9_$]+=>[a-zA-Z0-9_$]+!=="Account"\),\.\.\.f,\.\.\.\([bc]\?\[\]:\["Shortcuts"\]\),\.\.\.\([bc]\.hideProvideFeedback\?\[\]:\["Provide Feedback"\]\)\];` +
+			`var k=[a-zA-Z0-9_$]+\(!0\);[bc]=k\.path\.length;var l=[bc]===0,m=k\.path\[0\]\?\?k\.exiting\[0\],n=m\?\.startsWith\("workspace:"\);)` +
+			`(return ([a-zA-Z0-9_$]+)\.createElement\("div",\{ref:k\.setHost,className:"relative h-full w-full overflow-hidden"\},[\r\n\s]*[a-zA-Z0-9_$]+\.createElement\([a-zA-Z0-9_$]+,[\r\n\s]*` +
+			`\{offset:-[bc],active:l,depth:0,footer:e\.includes\("Account"\)\?[a-zA-Z0-9_$]+\.createElement\("div",\{className:"flex flex-col border-t border-border p-1"\},[a-zA-Z0-9_$]+\.createElement\([a-zA-Z0-9_$]+,\{showChevron:!0,className:"mx-1 px-3 py-2\.5",onClick:\(\)=>\{a\(([a-zA-Z0-9_$]+)\("Account"\)\);k\.push\("Account"\)\}\}\)\):void 0\},` +
+			`[a-zA-Z0-9_$]+\.createElement\(([a-zA-Z0-9_$]+),\{text:"Settings"\}\),[bc]\.map\([a-zA-Z0-9_$]+=>[a-zA-Z0-9_$]+\.createElement\(([a-zA-Z0-9_$]+),\{key:[a-zA-Z0-9_$]+,(?:text:[a-zA-Z0-9_$]+,)?label:[^,]+,onClick:\(\)=>\{a\([a-zA-Z0-9_$]+\([a-zA-Z0-9_$]+\)\);k\.push\([a-zA-Z0-9_$]+\)\}\}\)\),` +
+			`h&&[a-zA-Z0-9_$]+\.createElement\([a-zA-Z0-9_$]+\.Fragment,null,[a-zA-Z0-9_$]+\.createElement\([a-zA-Z0-9_$]+,\{text:"Workspaces"\}\),g\.map\([a-zA-Z0-9_$]+=>[a-zA-Z0-9_$]+\.createElement\([a-zA-Z0-9_$]+,[\r\n\s]*\{key:[a-zA-Z0-9_$]+\.uri,(?:label|text):[a-zA-Z0-9_$]+\.name,[\r\n\s]*onClick:\(\)=>\{var [a-zA-Z0-9_$]+=[a-zA-Z0-9_$]+\.uri;a\([a-zA-Z0-9_$]+\(\{workspaceUri:[a-zA-Z0-9_$]+\}\)\);k\.push\(` + "`" + `workspace:\$\{[a-zA-Z0-9_$]+\}` + "`" + `\)\}\}\)\)\))` +
+			`(\),m&&[a-zA-Z0-9_$]+\.createElement\([a-zA-Z0-9_$]+,\{offset:1-[bc],active:[bc]===1,depth:1,exiting:k\.exiting\.includes\(m\),onExited:\(\)=>\{k\.onExited\(m\)\},header:[a-zA-Z0-9_$]+\.createElement\([a-zA-Z0-9_$]+,\{onBack:k\.pop\}\)\},[a-zA-Z0-9_$]+\.createElement\([a-zA-Z0-9_$]+\.Provider,\{value:!0\},)` +
+			`(n\?[a-zA-Z0-9_$]+\.createElement\([a-zA-Z0-9_$]+,null\):[a-zA-Z0-9_$]+\(m\))` +
+			`(\)\)\)\};[\s\S]+?var a=([a-zA-Z0-9_$]+)\(\),b=!!a\.get\("settings"\)\?\.hideProjects[\s\S]{1,400}?\{(?:settingsFeature:[a-zA-Z0-9_$]+,)?projectManagementFeature:g\}=\(0,[a-zA-Z0-9_$]+\.useContext\)\(([a-zA-Z0-9_$]+)\)[\s\S]{1,400}?,[a-zA-Z0-9_$]+=([a-zA-Z0-9_$]+)\(g\?\.projectsStateProvider\))`,
+	)
+	mobileUserMessageActionsRe     = regexp.MustCompile(`(className:)"([^"]*?\buser-input-buttons-container\b[^"]*)"`)
+	mobileConversationRowActionsRe = regexp.MustCompile(`className:([a-zA-Z0-9_$]+)\("absolute top-0 bottom-0 -right-1 pl-6 flex items-center justify-end gap-0\.5 z-10",[\r\n\s]*([a-zA-Z0-9_$]+)\?"hidden":([a-zA-Z0-9_$]+)\?"opacity-100":"((?:[a-z-]+:)?opacity-0 group-hover:opacity-100 [^"]+)"\)`)
+
+	mobileTitlebarDeleteHookRe  = regexp.MustCompile(`\{handleArchive:([a-zA-Z0-9_$]+),handleRestore:([a-zA-Z0-9_$]+),handlePin:([a-zA-Z0-9_$]+),handleUnpin:([a-zA-Z0-9_$]+),[\r\n\s]*isArchiveSupported:([a-zA-Z0-9_$]+),handleShare:([a-zA-Z0-9_$]+),showShareModal:([a-zA-Z0-9_$]+),[\r\n\s]*shareUrl:([a-zA-Z0-9_$]+),handleCloseShareModal:([a-zA-Z0-9_$]+),[\r\n\s]*onShare:([a-zA-Z0-9_$]+)\}=([a-zA-Z0-9_$]+)\(([a-zA-Z0-9_$]+)\?\?""\)`)
+	mobileTitlebarDeleteMenuRe  = regexp.MustCompile(`([a-zA-Z0-9_$]+)\&\&\(([a-zA-Z0-9_$]+)\.push\(\{iconName:"edit",tooltip:"Rename",onClick:([a-zA-Z0-9_$]+)\}\)`)
+	mobileTitlebarDeleteModalRe = regexp.MustCompile(`([a-zA-Z0-9_$]+=[a-zA-Z0-9_$]+\(\{cascadeId:([a-zA-Z0-9_$]+),paneId:([a-zA-Z0-9_$]+),includeRemoveFromSplit:!1\}\);[\r\n\s]*return\s+[a-zA-Z0-9_$]+(?:\.length>0)?(?:\|\|[a-zA-Z0-9_$]+(?:\.length>0)?)+\?([a-zA-Z0-9_$]+)\.createElement\(([a-zA-Z0-9_$]+)\.Fragment,null,)`)
+	mobileDeleteModalExportRe   = regexp.MustCompile(`(?:var|const)\s+([a-zA-Z0-9_$]+)=(\(\{[^}]*isOpen:a,onClose:b,onDelete:c,showLoadingSpinner:[a-zA-Z0-9_$]+\}\)=>)`)
+
+	mobileKebabMenuPinArchiveRe      = regexp.MustCompile(`(?:const|var)\s+([a-zA-Z0-9_$]+)=\(\{cascadeId:([a-zA-Z0-9_$]+),onDeleteClick:([a-zA-Z0-9_$]+),onRenameClick:([a-zA-Z0-9_$]+),onMarkAsReadClick:([a-zA-Z0-9_$]+),isUnread:([a-zA-Z0-9_$]+),onViewDebugClick:([a-zA-Z0-9_$]+)([^\}]*)\}\)=>([a-zA-Z0-9_$]+)\.createElement\(([a-zA-Z0-9_$]+),\{side:"bottom",align:"start",className:"min-w-\[180px\]",finalFocus:!1\},([a-zA-Z0-9_$]+)\.createElement\(([a-zA-Z0-9_$]+),\{onClick:([a-zA-Z0-9_$]+),"data-testid":"conversation-rename-menu-item"\},([a-zA-Z0-9_$]+)\.createElement\(([a-zA-Z0-9_$]+),\{name:"edit",size:16,className:"text-secondary-foreground shrink-0"\}\),([a-zA-Z0-9_$]+)\.createElement\("span",null,"Rename"\)\),`)
+	mobileKebabWrapperPinArchiveRe   = regexp.MustCompile(`(?:const|var)\s+([a-zA-Z0-9_$]+)=(?:(?:[a-zA-Z0-9_$]+)\.memo\()?[\r\n\s]*(?:function)?\(\{cascadeId:([a-zA-Z0-9_$]+),onDeleteClick:([a-zA-Z0-9_$]+),onRenameClick:([a-zA-Z0-9_$]+),onMarkAsReadClick:([a-zA-Z0-9_$]+),isUnread:([a-zA-Z0-9_$]+),onOpenChange:([a-zA-Z0-9_$]+),onViewDebugClick:([a-zA-Z0-9_$]+)[^\}]*\}\)(?:=>|\{return\s+)([a-zA-Z0-9_$]+)\.createElement\(([a-zA-Z0-9_$]+),\{onOpenChange:([a-zA-Z0-9_$]+)\},([a-zA-Z0-9_$]+)\.createElement\(([a-zA-Z0-9_$]+),\{asChild:!0\},([a-zA-Z0-9_$]+)\.createElement\(([a-zA-Z0-9_$]+),\{variant:"ghost",size:"icon","aria-label":"More options","data-testid":"conversation-kebab",onClick:([a-zA-Z0-9_$]+)=>void ([a-zA-Z0-9_$]+)\.stopPropagation\(\)\},([a-zA-Z0-9_$]+)\.createElement\(([a-zA-Z0-9_$]+),\{name:"more_vert",size:16\}\)\)\),([a-zA-Z0-9_$]+)\.createElement\(([a-zA-Z0-9_$]+),\{cascadeId:([a-zA-Z0-9_$]+),onDeleteClick:([a-zA-Z0-9_$]+),onRenameClick:([a-zA-Z0-9_$]+),onMarkAsReadClick:([a-zA-Z0-9_$]+),isUnread:([a-zA-Z0-9_$]+),[\r\n\s]*onViewDebugClick:([a-zA-Z0-9_$]+)[^\}]*\}\)(?:\))?(?:\})?(?:\))?;`)
+	mobileKebabCallPinArchiveRe      = regexp.MustCompile(`([a-zA-Z0-9_$]+)\.createElement\(([a-zA-Z0-9_$]+),[\r\n\s]*\{cascadeId:([a-zA-Z0-9_$]+),onDeleteClick:(\(\)=>\{?[a-zA-Z0-9_$]+\(!0\)\}?|[a-zA-Z0-9_$]+),onRenameClick:([a-zA-Z0-9_$]+),onMarkAsReadClick:([^\}]+?),isUnread:([a-zA-Z0-9_$]+(?:\.[a-zA-Z0-9_$]+)?),onOpenChange:([a-zA-Z0-9_$]+)(?:,[\r\n\s]*onViewDebugClick:([a-zA-Z0-9_$]+))?(?:,[\r\n\s]*onShareClick:[^\}]+?)?\}\)`)
+	mobileHideAuxSidebarRe           = regexp.MustCompile(`([a-zA-Z0-9_$]+)\.createElement\(([a-zA-Z0-9_$]+),\{iconName:"dock_to_bottom",onClick:[a-zA-Z0-9_$]+,"aria-label":"Toggle Auxiliary Pane",dataTestId:"mobile-toggle-aux-sidebar"\}\)`)
+	settingsRulesEditorRe            = regexp.MustCompile(`((?:var|const)\s+([a-zA-Z0-9_$]+)=\(\{name:a,path:b,onCopyPath:c[^\}]*?onEdit:([a-zA-Z0-9_$]+),editTitle:([a-zA-Z0-9_$]+)="Edit",onDelete:([a-zA-Z0-9_$]+),deleteTitle:([a-zA-Z0-9_$]+)="Delete",onToggle:([a-zA-Z0-9_$]+),toggleChecked:([a-zA-Z0-9_$]+),toggleDisabled:([a-zA-Z0-9_$]+)=!1,expandableContent:([a-zA-Z0-9_$]+)[^\}]*?\}\)=>\{)(var\s+[a-zA-Z0-9_$]+=[a-zA-Z0-9_$]+(?:\|\|[a-zA-Z0-9_$]+)+,\[[a-zA-Z0-9_$]+,[a-zA-Z0-9_$]+\]=\(0,([a-zA-Z0-9_$]+)\.useState\)\(!1\),)`)
+	settingsCustomizationsShowEditRe = regexp.MustCompile(`("Copy path"\)\),)!([a-zA-Z0-9_$]+)&&([a-zA-Z0-9_$]+)&&([a-zA-Z0-9_$]+)\.createElement\(([a-zA-Z0-9_$]+)\.Fragment,null,([a-zA-Z0-9_$]+)\.createElement\(([a-zA-Z0-9_$]+),\{variant:"ghost",size:"icon-sm",onClick:([a-zA-Z0-9_$]+),"aria-label":`)
+	settingsRestoreCustomizationsRe  = regexp.MustCompile(`g=([a-zA-Z0-9_$]+)=>\{if\(![a-zA-Z0-9_$]+\)return [a-zA-Z0-9_$]+;[a-zA-Z0-9_$]+=new Map\([a-zA-Z0-9_$]+\);[a-zA-Z0-9_$]+\.delete\("Customizations"\);[\r\n\s]*return [a-zA-Z0-9_$]+\};`)
+
+	hideMicButtonRe = regexp.MustCompile(`([a-zA-Z0-9_$]+\.displayName="GutterHoverCommentButton";var )([a-zA-Z0-9_$]+)=\(`)
+
+	hideUserProfileRe = regexp.MustCompile(`function [a-zA-Z0-9_$]+\(\{className:a=""\}={}\)\{return [a-zA-Z0-9_$]+\.createElement\("a",\{href:"#",onClick:b=>\{b\.preventDefault\(\)\},className:` + "`w-6 h-6 rounded-full overflow-hidden shrink-0 flex items-center justify-center bg-transparent text-muted-foreground \\${a}`" + `,"aria-label":"User Profile \(Placeholder\)"`)
+
+	mobileSkipNotificationRe = regexp.MustCompile(`var ([a-zA-Z0-9_$]+)=!!this\.storageService\.get\("didAskForNotificationPermission"\);`)
+
+	mobileNewConvoViewRe = regexp.MustCompile(`((?:var|const)\s+[a-zA-Z0-9_$]+=\(\)=>\{var a=[a-zA-Z0-9_$]+\(\),b=[a-zA-Z0-9_$]+\(\);return\(0,[a-zA-Z0-9_$]+\.useCallback\)\(\(c,([a-zA-Z0-9_$]+)\)=>\{[a-zA-Z0-9_$]+\([a-zA-Z0-9_$]+\.map\(f=>\(\{trigger:f,ran:!1\}\)\)\);[a-zA-Z0-9_$]+\(c,\{section:)[a-zA-Z0-9_$]+(\}\)\},\[[a-zA-Z0-9_$]+,[a-zA-Z0-9_$]+\]\)\};[\r\n\s]*(?:var|const)\s+[a-zA-Z0-9_$]+=\(\)=>\{var [a-zA-Z0-9_$]+=[a-zA-Z0-9_$]+\(\),\{q:[a-zA-Z0-9_$]+\}=([a-zA-Z0-9_$]+)\(\{strict:!1\}\)(?:,[a-zA-Z0-9_$]+=[a-zA-Z0-9_$]+\(\)\.get\("conciergeAgent"\)\?\.enabled\?\?!1)?;(?:[a-zA-Z0-9_$]+\("MOBILE_HOME_VIEW"\);)?)(return\s+([a-zA-Z0-9_$]+)\.createElement\("div",\{className:"w-full h-full flex flex-col min-h-0 animate-fade-in"\},)([a-zA-Z0-9_$]+\.createElement\("div",\{className:"flex-1 min-h-0 overflow-y-auto flex flex-col gap-(?:6|3) pt-3"\},(?:[a-zA-Z0-9_$]+&&[a-zA-Z0-9_$]+\.createElement\("div",\{className:"shrink-0 px-2","data-testid":"mobile-home-concierge"\},[a-zA-Z0-9_$]+\.createElement\([a-zA-Z0-9_$]+,null\)\),)?[a-zA-Z0-9_$]+\.createElement\([a-zA-Z0-9_$]+,\{surface:"background"\}\)\)),`)
+
+	mobileNewConvoHeaderRe = regexp.MustCompile(`([a-zA-Z0-9_$]+)=\(\)=>([a-zA-Z0-9_$]+)\(\{select:a=>a\.location\.pathname==="\/"\}\)`)
+
+	mobileBackClearsSectionRe         = regexp.MustCompile(`([a-zA-Z0-9_$]+\.createElement\([a-zA-Z0-9_$]+,\{iconName:"arrow_back",onClick:\(\)=>)([a-zA-Z0-9_$]+)\(\)(,"aria-label":"Back to home",dataTestId:"mobile-back-to-home"\}\))`)
+	suppressConversationUnavailableRe = regexp.MustCompile(`[a-zA-Z0-9_$]+\(\{tag:"trajectory-not-found",title:"Conversation unavailable",message:"The conversation could not be loaded because its data was not found\."\}\)`)
+	disableTelemetryRe                = regexp.MustCompile(`return\{telemetryEnabled:[a-zA-Z0-9_$]+,marketingEmailsEnabled:`)
+
+	folderPickerInitialPathRe = regexp.MustCompile(`initialPath:[a-zA-Z0-9_$]+\?[a-zA-Z0-9_$]+\.fsPath:[a-zA-Z0-9_$]+\?"C:/":"/",fetchDirectoryContents:`)
+
+	composerUploadMenuRe = regexp.MustCompile(`\{icon:([a-zA-Z0-9_$]+)=>([a-zA-Z0-9_$]+)\.createElement\(([a-zA-Z0-9_$]+),\{name:"(?:image|attach_file)",size:[a-zA-Z0-9_$]+\.width\?Number\([a-zA-Z0-9_$]+\.width\):14,className:[a-zA-Z0-9_$]+\.className\}\),[\r\n\s]*label:"(?:Media|Files)",onClick:([a-zA-Z0-9_$]+)\}`)
+
+	fileUploadAcceptAllRe = regexp.MustCompile(`(onChange:[a-zA-Z0-9_$]+,)accept:[a-zA-Z0-9_$]+,[\r\n\s]*multiple:!0|accept:"\.png,[^"]+",[\r\n\s]*multiple:!0`)
+
+	fileUploadInputResetRe = regexp.MustCompile(`var\s+([a-zA-Z0-9_$]+)=\(\{onFilesSelected:([a-zA-Z0-9_$]+)\}\)=>\{var\s+([a-zA-Z0-9_$]+)=\(0,([a-zA-Z0-9_$]+)\.useRef\)\(null\),([a-zA-Z0-9_$]+)=\(0,[a-zA-Z0-9_$]+\.useCallback\)\(([a-zA-Z0-9_$]+)=>\{[a-zA-Z0-9_$]+=[a-zA-Z0-9_$]+\.target;(?:[a-zA-Z0-9_$]+\.files\&\&[a-zA-Z0-9_$]+\([a-zA-Z0-9_$]+\.files\)|if\([a-zA-Z0-9_$]+\.files\&\&[a-zA-Z0-9_$]+\.files\.length>0\)\{[\s\S]{1,300}?[a-zA-Z0-9_$]+\([a-zA-Z0-9_$]+\);[a-zA-Z0-9_$]+\.value=""\})\},\[[a-zA-Z0-9_$]+\]\);return\{openFileDialog:\(0,[a-zA-Z0-9_$]+\.useCallback\)\(\(\)=>\{[a-zA-Z0-9_$]+\.current\?\.click\(\)\},\[\]\),fileInputRef:[a-zA-Z0-9_$]+,handleFileChange:[a-zA-Z0-9_$]+\}\};`)
+
+	fileUploadCustomTextTypesRe = regexp.MustCompile(`function ([a-zA-Z0-9_$]+)\(a,b\)\{b=b\.split\(";"\)\[0\]\.trim\(\)\.toLowerCase\(\);if\(([a-zA-Z0-9_$]+)\.includes\(b\)\)return b;a=a\.slice\(a\.lastIndexOf\("\."\)\+1\)\.toLowerCase\(\);return ([a-zA-Z0-9_$]+)\[a\]\}(function [a-zA-Z0-9_$]+\(a\)\{return [a-zA-Z0-9_$]+\(\"\",a\)!==void 0\})`)
+
+	fileUploadLargeFileStreamingRe        = regexp.MustCompile(`if\(([a-zA-Z0-9_$]+)\)if\(([a-zA-Z0-9_$]+)\.size>1048576\)(?:console\.error\("Text file size exceeds 1MB limit"\);|[a-zA-Z0-9_$]+\?\.\("Text file size exceeds 1MB limit"\),[a-zA-Z0-9_$]+\((?:[a-zA-Z0-9_$]+\.VALIDATION_CHECK_FAILED|"validation_check_failed"),[\r\n\s]*Error\("Text file size exceeds 1MB limit"\)\);)`)
+	virtualizationDisableContractionRe    = regexp.MustCompile(`contractionSafetyPx:3E3,outerRadiusPx:5E3`)
+	questionModalWriteInRadioRe           = regexp.MustCompile(`(value:"__write_in__",checked:([a-zA-Z0-9_$]+),onChange:\(\)=>\{(?:var|let|const)\s+([a-zA-Z0-9_$]+)=)!([a-zA-Z0-9_$]+)(;[a-zA-Z0-9_$]+\([a-zA-Z0-9_$]+\);[a-zA-Z0-9_$]+&&\(([a-zA-Z0-9_$]+)\.isMultiSelect\|\|)`)
+	questionModalWriteInFocusRe           = regexp.MustCompile(`(onClick:\(\)=>\{([a-zA-Z0-9_$]+)\|\|[\r\n\s]*\(([a-zA-Z0-9_$]+)\(!0\),([a-zA-Z0-9_$]+)\.isMultiSelect\|\|([a-zA-Z0-9_$]+)\(\)\)\})(,onChange:)`)
+	questionModalPreventRadioFocusStealRe = regexp.MustCompile(`(if\((?:document\.hasFocus\(\)&&)?![a-zA-Z0-9_$]+\.isMultiSelect&&![a-zA-Z0-9_$]+&&[a-zA-Z0-9_$]+\.length>0)(\)\{(?:var|let|const)\s+[a-zA-Z0-9_$]+=[a-zA-Z0-9_$]+\.current\.get\([a-zA-Z0-9_$]+\[0\]\);[a-zA-Z0-9_$]+&&[a-zA-Z0-9_$]+\.focus\(\)\})|([a-zA-Z0-9_$]+\|\|[a-zA-Z0-9_$]+===void 0\|\|[a-zA-Z0-9_$]+\.isMultiSelect\|\|!document\.hasFocus\(\)\|\|[a-zA-Z0-9_$]+\([a-zA-Z0-9_$]+\)&&[a-zA-Z0-9_$]+!==[a-zA-Z0-9_$]+\.current)(\|\|[a-zA-Z0-9_$]+\.current\.get\([a-zA-Z0-9_$]+\)\?\.focus\(\))`)
+	autoscrollDistanceFixRe               = regexp.MustCompile(`return\s+([a-zA-Z0-9_$]+)\?\(([a-zA-Z0-9_$]+)\.current\?[a-zA-Z0-9_$]+\.current\([a-zA-Z0-9_$]+\):[a-zA-Z0-9_$]+\.scrollHeight-[a-zA-Z0-9_$]+\.clientHeight-[a-zA-Z0-9_$]+\.scrollTop\)<=([a-zA-Z0-9_$]+):!1`)
+	websocketTransportDefaultRe           = regexp.MustCompile(`(function [a-zA-Z0-9_$]+\(\)\{(?:var|let|const)\s+[a-zA-Z0-9_$]+=new URLSearchParams\((?:window\.)?location\.search\),[a-zA-Z0-9_$]+=[a-zA-Z0-9_$]+\.get\("useWebSocket"\);return [a-zA-Z0-9_$]+!==null\?[a-zA-Z0-9_$]+==="true")(?:(\?"explicit":"off")(:[a-zA-Z0-9_$]+\.get\("wsTransport"\))==="3"\?"hub":"off"|(:[a-zA-Z0-9_$]+\.get\("wsTransport"\))==="2")\}`)
+	websocketLivenessProbeRe              = regexp.MustCompile(`(type:"ping"\}\s*\)\s*\)\s*;\s*var\s+[a-zA-Z0-9_$]+\s*=\s*[a-zA-Z0-9_$]+\.inboundFrameSeq\s*;\s*[a-zA-Z0-9_$]+\.probeTimer\s*=\s*setTimeout\(\s*\(\s*\)\s*=>\s*\{[\s\S]{0,400}?no frames for 4000ms and ping unanswered; closing socket[\s\S]{0,200}?\}\s*,\s*)2E3(\)\s*\}\s*else\s+[a-zA-Z0-9_$]+\s*\(\s*[a-zA-Z0-9_$]+\s*\)\s*\}\s*,\s*2E3\s*\)\s*\})`)
+	bootstrapLocalUserInfoRetryRe         = regexp.MustCompile(`async\s+function\s+([a-zA-Z0-9_$]+)\(a\)\{var\s+b=d,c=d;try\{let\s+e=c\(await\s+b\(a\.lsClient\.getLocalUserInfo\(([a-zA-Z0-9_$]+\([a-zA-Z0-9_$]+,\{\}\))\)\)\),f=e\.username;return\{homeDirUri:([a-zA-Z0-9_$]+)\(e\.homeDirUri\),username:f\}\}finally\{b\(\)\}\}`)
+	googlePreconnectRe                    = regexp.MustCompile(`<link\s+rel="preconnect"\s+href="https://(?:www\.gstatic\.com|ssl\.gstatic\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)"[^>]*>\r?\n?`)
+	googleFontsImportRe                   = regexp.MustCompile(`@import url\('https://fonts\.googleapis\.com/css2\?[^']+'\);`)
+)
+
+func mobile(o Options) bool { return o.MobileUX }
+
+// All returns every patch in a stable order. Adding a patch here is the only
+// step needed: the tests, the doctor report, the control panel and the cache key
+// all derive from this list.
+func All() []Patch {
+	return []Patch{
+		// Without this the phone's browser would call https://127.0.0.1:<port>,
+		// which resolves to the phone itself. Nothing works until it is fixed.
+		{
+			ID:       "base-url-origin",
+			Desc:     "Point the web app at the browser origin instead of https://127.0.0.1",
+			Target:   MainJS,
+			Kind:     Literal,
+			Required: true,
+			Find:     "get baseUrl(){return`https://127.0.0.1:${this.port}`}",
+			Replace:  "get baseUrl(){return typeof window!==\"undefined\"?window.location.origin:`https://127.0.0.1:${this.port}`}",
+		},
+		{
+			ID:       "skip-onboarding",
+			Desc:     "Skip the desktop onboarding redirect on remote clients",
+			Target:   MainJS,
+			Kind:     Regexp,
+			Required: true,
+			FindRe:   skipOnboardingRe,
+			Replace:  `return null`,
+		},
+		// Returning false from the Lexical ENTER command handler lets the browser/editor
+		// handle native newline insertion and IME composition commit cleanly.
+		// On touch devices without send modifiers (Cmd/Ctrl), or during CJK IME composition,
+		// bypass preventDefault() to prevent character duplication and ghost remnants.
+		{
+			ID:       "mobile-enter-newline",
+			Desc:     "Preserve native newline and prevent IME composition corruption on touch devices",
+			Target:   MainJS,
+			Kind:     Regexp,
+			Optional: true,
+			Enabled:  mobile,
+			FindRe:   mobileEnterNewlineRe,
+			Replace:  `registerCommand($1,$2=>{if(!$2)return!1;${3}var _t=window.innerWidth<=768||(window.matchMedia&&window.matchMedia("(pointer:coarse)").matches),_i=$2.isComposing||$2.keyCode===229||(window.__agyLastCompEnd&&performance.now()-window.__agyLastCompEnd<80);if(_i||(_t&&!$2.metaKey&&!$2.ctrlKey))return!1;$2.preventDefault();`,
+		},
+		// On a desktop the effort submenu opens on hover, so the row's onClick is
+		// a convenience that picks the default effort. A tap fires both, closing
+		// the popup before the submenu can be used. Removing the handler leaves
+		// the submenu reachable.
+		{
+			ID:       "model-effort-submenu",
+			Desc:     "Tapping a model opens its reasoning-effort submenu instead of picking medium",
+			Target:   MainJS,
+			Kind:     Regexp,
+			Optional: true,
+			Enabled:  func(Options) bool { return false },
+			FindRe:   modelEffortRe,
+			Replace:  "",
+		},
+		// Replacing the component with a function rather than an arrow keeps the
+		// anchor "var vz=(" out of the replacement, so the rewrite cannot match
+		// its own output.
+		{
+			ID:       "hide-mic-button",
+			Desc:     "Hide the voice-recording button (transcription is unavailable in standalone mode)",
+			Target:   MainJS,
+			Kind:     Regexp,
+			Optional: true,
+			Enabled:  func(Options) bool { return false },
+			FindRe:   hideMicButtonRe,
+			Replace:  `${1}${2}=function(){return null};var ${2}Disabled=(`,
+		},
+		// The titlebar user profile icon is a dead placeholder in standalone mode (2.8.x; removed upstream in 2.9.x).
+		// Replacing the component with a function returning null hides it cleanly.
+		{
+			ID:       "hide-user-profile-button",
+			Desc:     "Hide the non-functional user profile placeholder button on mobile",
+			Target:   MainJS,
+			Kind:     Regexp,
+			Enabled:  mobile,
+			Optional: true,
+			FindRe:   hideUserProfileRe,
+			Replace:  `function wmb(){return null};function wmbDisabled({className:a=""}={}){return x.createElement("a",{href:"#",onClick:b=>{b.preventDefault()},className:` + "`w-6 h-6 rounded-full overflow-hidden shrink-0 flex items-center justify-center bg-transparent text-muted-foreground ${a}`" + `,"aria-label":"User Profile (Placeholder)"`,
+		},
+		// Google's standalone build cannot sign in from a browser: its auth service
+		// is a stub, and its OAuth client only accepts loopback redirect URIs. Point
+		// the button at a page that can actually complete the flow instead of
+		// leaving it dead.
+		{
+			ID:      "sign-in-button",
+			Desc:    "Make the Settings > Account sign-in button work over the network",
+			Target:  MainJS,
+			Kind:    Regexp,
+			FindRe:  signInButtonRe,
+			Replace: `onClick:()=>{window.location.href="/__agy/signin"}`,
+		},
+		{
+			ID:      "auth-service-login-redirect",
+			Desc:    "Redirect web auth service login calls to the network sign-in page",
+			Target:  MainJS,
+			Kind:    Regexp,
+			FindRe:  authServiceLoginRedirectRe,
+			Replace: `async loginWithRedirect($1){window.location.href="/__agy/signin";return;`,
+		},
+		{
+			ID:      "auth-service-show-login-flow",
+			Desc:    "Redirect web auth service showLoginFlow to the network sign-in page",
+			Target:  MainJS,
+			Kind:    Regexp,
+			FindRe:  authServiceShowLoginFlowRe,
+			Replace: `async showLoginFlow(){window.location.href="/__agy/signin";return;`,
+		},
+		{
+			ID:      "auth-service-stub-login-redirect",
+			Desc:    "Redirect stub web auth service calls to the network sign-in page",
+			Target:  MainJS,
+			Kind:    Regexp,
+			FindRe:  authServiceStubLoginRedirectRe,
+			Replace: `loginWithRedirect:async()=>{window.location.href="/__agy/signin"},showLoginFlow:async()=>{window.location.href="/__agy/signin"}`,
+		},
+
+		// The prompt is an in-app banner shown once when notificationPermission is
+		// still "default". Making the "have we asked yet" flag read as true on
+		// touch devices skips it without touching the granted path, so a desktop
+		// browser can still turn notifications on.
+		{
+			ID:      "mobile-skip-notification-prompt",
+			Desc:    "Skip the Enable Notifications banner on touch devices",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: mobile,
+			FindRe:  mobileSkipNotificationRe,
+			Replace: `var $1=(window.innerWidth<=768||(window.matchMedia&&window.matchMedia("(pointer:coarse)").matches))||!!this.storageService.get("didAskForNotificationPermission");`,
+		},
+
+		// When a project or standalone section is selected on touch devices (e.g. via + button),
+		// show the empty conversation view and composer directly rather than the full list.
+		// Uses replace:true for the optimistic conversation creation so history back returns to the list.
+		{
+			ID:      "mobile-new-convo-view",
+			Desc:    "Show the empty conversation composer view on touch devices when a project is selected",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: mobile,
+			FindRe:  mobileNewConvoViewRe,
+			Replace: `${1}${2},replace:!0${3}var {section:sec}=${4}({strict:!1}),isMobileNew=Boolean((window.innerWidth<=768||(window.matchMedia&&window.matchMedia("(pointer:coarse)").matches))&&sec);${5}isMobileNew?${6}.createElement("div",{className:"flex-1 min-h-0 flex flex-col items-center justify-center gap-3 select-none"},${6}.createElement("span",{className:"text-xs text-muted-foreground/60"},"Start a new conversation")):${7},`,
+		},
+
+		// On mobile, show the back button in the main titlebar when a project is selected
+		// and ensure back navigation always clears the active section.
+		{
+			ID:      "mobile-new-convo-header",
+			Desc:    "Show the back button in the titlebar when in new conversation mode and clear section on back",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: mobile,
+			FindRe:  mobileNewConvoHeaderRe,
+			Replace: `$1=()=>$2({select:a=>a.location.pathname==="/"&&!a.location.search?.section})`,
+		},
+		{
+			ID:      "mobile-back-clears-section",
+			Desc:    "Ensure the mobile back button always clears the selected section to return to the root conversation list",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: mobile,
+			FindRe:  mobileBackClearsSectionRe,
+			Replace: `${1}${2}({clearSection:!0})${3}`,
+		},
+		{
+			ID:       "mobile-project-add-button",
+			Desc:     "Always show project New Conversation button on mobile touch devices without hovering",
+			Target:   MainJS,
+			Kind:     Regexp,
+			Optional: true,
+			Enabled:  mobile,
+			FindRe:   mobileProjectAddButtonRe,
+			Replace:  `if(true){let $4=$6==="project"?"New Conversation in Project":$7==="environment"?"New Conversation in Workspace":void 0`,
+		},
+		{
+			ID:      "mobile-project-header-actions",
+			Desc:    "Always show project header actions (add conversation button and menu) on touch devices",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: mobile,
+			FindRe:  mobileProjectHeaderActionsRe,
+			Replace: `className:"absolute right-1 top-0 flex h-full items-center gap-1 opacity-100"`,
+		},
+		{
+			ID:      "mobile-project-kebab-menu",
+			Desc:    "Always show project kebab (...) options button on mobile touch devices",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: mobile,
+			FindRe:  mobileProjectKebabMenuRe,
+			Replace: `${5}${6}`,
+			ReplaceMatch: func(g [][]byte, _ Options) string {
+				if g[5] != nil {
+					return string(g[5]) + string(g[6])
+				}
+				return `,` + string(g[1]) + `=(0,` + string(g[2]) + `.useContext)(` + string(g[3]) + `),` + string(g[4]) + `=!1,`
+			},
+		},
+		{
+			ID:      "mobile-project-add-click-close-sidebar",
+			Desc:    "Automatically collapse mobile sidebar drawer when clicking + new conversation on mobile",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: mobile,
+			FindRe:  mobileProjectAddClickCloseSidebarRe,
+			Replace: `onClick:${1}=>{${2}.stopPropagation();${3}(${2})||(function(){try{if(window.innerWidth<=768||(window.matchMedia&&window.matchMedia("(pointer:coarse)").matches)){var _sb=document.querySelector('[data-testid="sidebar-toggle"], [data-testid="mobile-toggle-sidebar"]');if(_sb&&window.getComputedStyle(_sb).display!=="none"){_sb.click();}}}catch(e){}}(),${2}.preventDefault(),${4}(${2}))}`,
+		},
+		// Antigravity 2.23.0 snapshots projectsOrder into localStorage on mount with
+		// projectsFolderSortBy defaulted to "custom". When projects load before
+		// conversation timestamps arrive, that snapshot locks in alphabetical order
+		// and ignores subsequent Sort By selections ("last_updated" or
+		// "last_user_prompt"). Re-run the dynamic sort whenever projectsSortBy is
+		// not "custom".
+		{
+			ID:      "mobile-project-sort-order",
+			Desc:    "Sort grouped project folders by active Sort By selection instead of stale alphabetical order",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: mobile,
+			FindRe:  mobileProjectSortOrderRe,
+			Replace: `if($3!=="custom"||$1.length===0)return $2;`,
+		},
+		// Antigravity's mobile settings component (jNb) only renders Settings and
+		// Workspaces sections, omitting the Projects and Not in Project sections
+		// present in the desktop sidebar (mNb), and ignores settingsProjectId /
+		// settingsScreen URL parameters when opening Settings from a project menu.
+		{
+			ID:      "mobile-project-settings-export",
+			Desc:    "Export project settings component to global window for mobile settings navigation",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: mobile,
+			FindRe:  mobileProjectSettingsExportRe,
+			Replace: `window.__agyProjectSettings=$1;$0`,
+		},
+		{
+			ID:      "mobile-settings-projects",
+			Desc:    "Add Projects and Not in Project sections and deep-link navigation to mobile Settings view",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: mobile,
+			FindRe:  mobileSettingsProjectsRe,
+			Replace: `${1}var {projectManagementFeature:_pm}=(0,${3}.useContext)(${11}),_hp=!!${10}().get("settings")?.hideProjects,_ps=${12}(_pm?.projectsStateProvider),_pl=(_ps||[]).filter(_x=>_x?.project&&!_x.project.isWorkspaceOnly&&!_x.project.archived),_init=(0,${3}.useRef)(!1);(0,${3}.useEffect)(()=>{if(_init.current)return;_init.current=!0;try{var _u=new URLSearchParams(window.location.search),_cl=s=>s?s.replace(/^"|"$/g,""):"",_pid=_cl(_u.get("settingsProjectId")),_scr=_cl(_u.get("settingsScreen"));if(_pid){a({type:"settingsScreen/setContextProjectId",payload:_pid});a({type:"settingsScreen/navigateToProjectScreen",payload:{projectId:_pid}});if(_scr)a(${4}(_scr));k.push("project:"+_pid)}else if(_scr&&_scr!=="General"){a(${4}(_scr));k.push(_scr)}}catch(_e){}},[]);${2},!_hp&&_pm&&_pl.length>0&&${3}.createElement(${3}.Fragment,null,${3}.createElement(${5},{text:"Projects"}),_pl.map(_p=>${3}.createElement(${6},{key:_p.project.id,text:_p.project.name||"Project",label:_p.project.name||"Project",onClick:()=>{a({type:"settingsScreen/setContextProjectId",payload:_p.project.id});a({type:"settingsScreen/navigateToProjectScreen",payload:{projectId:_p.project.id}});k.push("project:"+_p.project.id)}}))),_pm&&${3}.createElement(${3}.Fragment,null,${3}.createElement(${5},{text:"Not in Project"}),${3}.createElement(${6},{key:"outside-of-project",text:"Conversations",label:"Conversations",onClick:()=>{a({type:"settingsScreen/setContextProjectId",payload:"outside-of-project"});a({type:"settingsScreen/navigateToProjectScreen",payload:{projectId:"outside-of-project"}});k.push("project:outside-of-project")}}))${7}m?.startsWith("project:")&&window.__agyProjectSettings?${3}.createElement(window.__agyProjectSettings,null):${8}${9}`,
+		},
+		{
+			ID:      "mobile-user-message-actions",
+			Desc:    "Make user message action buttons (Undo icon and copy) visible on touch devices",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: mobile,
+			FindRe:  mobileUserMessageActionsRe,
+			Replace: `${1}"relative self-end ml-auto mt-1 flex flex-row items-center p-1 rounded-full opacity-90 pointer-events-auto transition-all bg-transparent user-input-buttons-container select-none"`,
+		},
+		{
+			ID:      "mobile-conversation-row-actions",
+			Desc:    "Always show conversation row actions on touch/mobile devices while keeping hover behavior on desktop",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: mobile,
+			FindRe:  mobileConversationRowActionsRe,
+			Replace: `className:${1}("absolute top-0 bottom-0 -right-1 pl-6 flex items-center justify-end gap-0.5 z-10",(${2}||${3}||Boolean(window.innerWidth<=768||(window.matchMedia&&window.matchMedia("(pointer:coarse)").matches)))?"opacity-100":"${4}")`,
+		},
+		{
+			ID:      "mobile-titlebar-delete-hook",
+			Desc:    "Expose conversation deletion handlers in the titlebar more-actions menu",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: mobile,
+			FindRe:  mobileTitlebarDeleteHookRe,
+			Replace: `{handleArchive:$1,handleRestore:$2,handlePin:$3,handleUnpin:$4,isArchiveSupported:$5,handleDelete:agyDel,showDeleteModal:agyShowDel,setShowDeleteModal:agySetShowDel,showLoadingSpinner:agyDelSpin,handleCloseDeleteModal:agyCloseDel,handleShare:$6,showShareModal:$7,shareUrl:$8,handleCloseShareModal:$9,onShare:$10}=$11($12??"")`,
+		},
+		{
+			ID:      "mobile-titlebar-delete-menu",
+			Desc:    "Add Delete option to the titlebar more-actions dropdown menu",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: mobile,
+			FindRe:  mobileTitlebarDeleteMenuRe,
+			Replace: `$1&&($2.push({iconName:"edit",tooltip:"Rename",onClick:$3}),$2.push({iconName:"delete",tooltip:"Delete",onClick:()=>{typeof agySetShowDel==="function"&&agySetShowDel(!0)}})`,
+		},
+		{
+			ID:      "mobile-delete-modal-export",
+			Desc:    "Export conversation delete modal component to global window for adaptive titlebar rendering",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: mobile,
+			FindRe:  mobileDeleteModalExportRe,
+			Replace: `var $1=window.__agyDeleteModal=$2`,
+		},
+		{
+			ID:      "mobile-titlebar-delete-modal",
+			Desc:    "Render conversation delete confirmation modal in titlebar component",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: mobile,
+			FindRe:  mobileTitlebarDeleteModalRe,
+			Replace: `${1}window.__agyDeleteModal&&typeof agyShowDel!=="undefined"?${4}.createElement(window.__agyDeleteModal,{isOpen:agyShowDel,onClose:agyCloseDel,onDelete:function(){agySetShowDel(!1);try{if(typeof agyDel==="function"&&${2})agyDel()}catch(e){}var _b=document.querySelector('[data-testid="mobile-back-to-home"]');if(_b){_b.click()}else{try{window.history.replaceState(null,"","/");window.dispatchEvent(new PopStateEvent("popstate"))}catch(e){window.location.replace("/")}}},showLoadingSpinner:agyDelSpin}):null,`,
+		},
+		{
+			ID:       "mobile-kebab-menu-pin-archive",
+			Desc:     "Add Pin and Archive actions into conversation kebab dropdown menu",
+			Target:   MainJS,
+			Kind:     Regexp,
+			Optional: true,
+			Enabled:  func(Options) bool { return false },
+			FindRe:   mobileKebabMenuPinArchiveRe,
+			Replace:  `const $1=({cascadeId:$2,onDeleteClick:$3,onRenameClick:$4,onMarkAsReadClick:$5,isUnread:$6,onViewDebugClick:$7$8,onPinClick:agyPin,isPinned:agyIsPinned,onArchiveClick:agyArchive})=>$9.createElement($10,{side:"bottom",align:"start",className:"min-w-[180px]",finalFocus:!1},$11.createElement($12,{onClick:$13,"data-testid":"conversation-rename-menu-item"},$14.createElement($15,{name:"edit",size:16,className:"text-secondary-foreground shrink-0"}),$16.createElement("span",null,"Rename")),agyPin&&$9.createElement($12,{onClick:agyPin,"data-testid":"conversation-pin-menu-item"},$14.createElement($15,{name:agyIsPinned?"keep_off":"keep",size:16,className:"text-secondary-foreground shrink-0"}),$16.createElement("span",null,agyIsPinned?"Unpin":"Pin")),agyArchive&&$9.createElement($12,{onClick:agyArchive,"data-testid":"conversation-archive-menu-item"},$14.createElement($15,{name:"archive",size:16,className:"text-secondary-foreground shrink-0"}),$16.createElement("span",null,"Archive")),`,
+		},
+		{
+			ID:       "mobile-kebab-wrapper-pin-archive",
+			Desc:     "Pass pin and archive props through conversation kebab wrapper component",
+			Target:   MainJS,
+			Kind:     Regexp,
+			Optional: true,
+			Enabled:  func(Options) bool { return false },
+			FindRe:   mobileKebabWrapperPinArchiveRe,
+			Replace:  `var $1=({cascadeId:$2,onDeleteClick:$3,onRenameClick:$4,onMarkAsReadClick:$5,isUnread:$6,onOpenChange:$7,onViewDebugClick:$8,onPinClick:agyPin,isPinned:agyIsPinned,onArchiveClick:agyArchive})=>$9.createElement($10,{onOpenChange:$11},$12.createElement($13,{asChild:!0},$14.createElement($15,{variant:"ghost",size:"icon","aria-label":"More options","data-testid":"conversation-kebab",onClick:$16=>void $17.stopPropagation()},$18.createElement($19,{name:"more_vert",size:16}))),$20.createElement($21,{cascadeId:$22,onDeleteClick:$23,onRenameClick:$24,onMarkAsReadClick:$25,isUnread:$26,onViewDebugClick:$27,onPinClick:agyPin,isPinned:agyIsPinned,onArchiveClick:agyArchive}));`,
+		},
+		{
+			ID:       "mobile-kebab-call-pin-archive",
+			Desc:     "Supply pin and archive handlers to conversation kebab button call in history list",
+			Target:   MainJS,
+			Kind:     Regexp,
+			Optional: true,
+			Enabled:  func(Options) bool { return false },
+			FindRe:   mobileKebabCallPinArchiveRe,
+			Replace:  `$1.createElement($2,{cascadeId:$3,onDeleteClick:($4),onRenameClick:$5,onMarkAsReadClick:$6,isUnread:$7,onOpenChange:$8,onPinClick:()=>b.handlePin?.(a),isPinned:b.isPinned,onArchiveClick:()=>b.handleArchive?.(a)})`,
+		},
+		{
+			ID:       "mobile-hide-aux-sidebar",
+			Desc:     "Hide unclickable auxiliary sidebar toggle icon on mobile navigation bar",
+			Target:   MainJS,
+			Kind:     Regexp,
+			Optional: true,
+			Enabled:  func(Options) bool { return false },
+			FindRe:   mobileHideAuxSidebarRe,
+			Replace:  `null`,
+		},
+		{
+			ID:      "settings-rules-editor",
+			Desc:    "Enable inline editor and save button for rules & skills in Settings Customizations view",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: func(Options) bool { return true },
+			FindRe:  settingsRulesEditorRe,
+			Replace: `${1}var _R=${12},[agyEdit,agySetEdit]=_R.useState(!1),[agyTxt,agySetTxt]=_R.useState(""),[agySave,agySetSave]=_R.useState(!1),[agyDone,agySetDone]=_R.useState(!1),[agySavedDesc,agySetSavedDesc]=_R.useState(null);if(agySavedDesc!==null)e=agySavedDesc;var agyDoEdit=${3}||(b?async()=>{if(agyEdit){agySetEdit(!1);return;}try{let res=await fetch("/__agy/api/rules/read?path="+encodeURIComponent(b));if(res.ok){let json=await res.json();agySetTxt(json.content||"");agySetEdit(!0);}}catch(e){}}:void 0);var agyDoSave=async()=>{agySetSave(!0);try{let res=await fetch("/__agy/api/rules/save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:b,content:agyTxt})});if(res.ok){agySetDone(!0);var _desc=agyTxt.length>120?agyTxt.slice(0,120)+"\u2026":agyTxt;agySetSavedDesc(_desc);setTimeout(()=>{agySetDone(!1);agySetEdit(!1)},1000);}}catch(e){}finally{agySetSave(!1)}};${3}=agyDoEdit;var agyEditorNode=agyEdit?_R.createElement("div",{className:"w-full mt-2 pt-2 border-t border-border flex flex-col gap-2"},_R.createElement("textarea",{value:agyTxt,onChange:e=>agySetTxt(e.target.value),placeholder:"Write markdown instructions...",className:"agy-rules-editor w-full font-mono text-xs p-2.5 rounded-lg border border-border bg-muted/40 focus:outline-none focus:ring-1 focus:ring-primary resize-y text-foreground leading-normal",style:{fontSize:"11px",lineHeight:"1.45",minHeight:"200px",maxHeight:"500px"},spellCheck:!1}),_R.createElement("div",{className:"flex items-center justify-end gap-2"},_R.createElement("button",{type:"button",onClick:()=>agySetEdit(!1),disabled:agySave,className:"text-xs h-7 px-3 rounded border border-border bg-muted/40 hover:bg-muted text-muted-foreground"},"Cancel"),_R.createElement("button",{type:"button",onClick:agyDoSave,disabled:agySave,className:"text-xs h-7 px-3 rounded flex items-center gap-1 font-medium bg-primary text-primary-foreground hover:bg-primary/90"},agySave?"Saving...":(agyDone?"Saved ✓":"Save")))):null;var agyExp=${10}?_R.createElement(_R.Fragment,null,${10},agyEditorNode):agyEditorNode;${10}=agyExp;${11}`,
+		},
+		{
+			ID:       "settings-customizations-show-edit",
+			Desc:     "Allow edit action button to appear even when custom actions dropdown is present (e.g. for Skills)",
+			Target:   MainJS,
+			Kind:     Regexp,
+			Enabled:  func(Options) bool { return true },
+			Optional: true,
+			FindRe:   settingsCustomizationsShowEditRe,
+			Replace:  `${1}$3&&$4.createElement($5.Fragment,null,$6.createElement($7,{variant:"ghost",size:"icon-sm",onClick:$8,"aria-label":`,
+		},
+		{
+			ID:       "settings-restore-customizations-tab",
+			Desc:     "Preserve Customizations tab in Settings modal so it remains accessible on mobile and desktop",
+			Target:   MainJS,
+			Kind:     Regexp,
+			Enabled:  func(Options) bool { return true },
+			Optional: true,
+			FindRe:   settingsRestoreCustomizationsRe,
+			Replace:  `g=${1}=>${1};`,
+		},
+		{
+			ID:      "suppress-conversation-unavailable-modal",
+			Desc:    "Suppress annoying Conversation unavailable popup when navigating away from deleted conversations",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: func(Options) bool { return true },
+			FindRe:  suppressConversationUnavailableRe,
+			Replace: `void 0`,
+		},
+		{
+			ID:      "force-disable-telemetry",
+			Desc:    "Force telemetry setting to be disabled by default in Settings and user settings state",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: func(Options) bool { return true },
+			FindRe:  disableTelemetryRe,
+			Replace: `return{telemetryEnabled:!1,marketingEmailsEnabled:`,
+		},
+		{
+			ID:      "virtualization-disable-contraction",
+			Desc:    "Prevent scroll height collapse caused by virtualization unmounting upper nodes",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: func(Options) bool { return true },
+			FindRe:  virtualizationDisableContractionRe,
+			Replace: `contractionSafetyPx:8E3,outerRadiusPx:1.5E4`,
+		},
+
+		// Always start the folder picker at the configured workspace root instead of
+		// falling back to homeDirUri (b).
+		{
+			ID:     "folder-picker-initial-path",
+			Desc:   "Start the folder picker at the configured workspace root",
+			Target: MainJS,
+			Kind:   Regexp,
+			Enabled: func(o Options) bool {
+				return o.WorkspaceRoot != ""
+			},
+			FindRe: folderPickerInitialPathRe,
+			ReplaceFn: func(o Options) string {
+				return `initialPath:` + jsString(o.WorkspaceRoot) + `,fetchDirectoryContents:`
+			},
+		},
+		{
+			ID:      "workspace-file-uploader",
+			Desc:    "Inject client-side asynchronous streaming file uploader and progress UI",
+			Target:  HTML,
+			Kind:    InjectHead,
+			Replace: uploaderScript,
+		},
+		{
+			ID:      "composer-line-start-nav",
+			Desc:    "Fix Cmd+ArrowLeft (macOS) and Home jumping to start of text when slash commands or chips exist",
+			Target:  HTML,
+			Kind:    InjectHead,
+			Replace: lineStartNavScript,
+		},
+		{
+			ID:      "connection-watchdog",
+			Desc:    "Auto-dismiss stale connection banners once reconnected and recover from stuck loading spinners",
+			Target:  HTML,
+			Kind:    InjectHead,
+			Replace: connectionWatchdogScript,
+		},
+		{
+			ID:      "composer-upload-menu-item",
+			Desc:    "Add Upload File menu item to the composer plus menu",
+			Target:  MainJS,
+			Kind:    Regexp,
+			FindRe:  composerUploadMenuRe,
+			Replace: `{icon:$1=>$2.createElement($3,{name:"attach_file",size:$1.width?Number($1.width):14,className:$1.className}),label:"Upload File",onClick:()=>window.__agyTriggerUpload&&window.__agyTriggerUpload()},{icon:$1=>$2.createElement($3,{name:"image",size:$1.width?Number($1.width):14,className:$1.className}),label:"Media",onClick:$4}`,
+		},
+		{
+			ID:      "file-upload-accept-all",
+			Desc:    "Allow selecting any file type in the composer attachment dialog",
+			Target:  MainJS,
+			Kind:    Regexp,
+			FindRe:  fileUploadAcceptAllRe,
+			Replace: `${1}accept:"*/*",multiple:!0`,
+		},
+		{
+			ID:      "file-upload-input-reset",
+			Desc:    "Ensure file input is reset after selection so selecting the same file triggers onChange",
+			Target:  MainJS,
+			Kind:    Regexp,
+			FindRe:  fileUploadInputResetRe,
+			Replace: `var $1=({onFilesSelected:$2})=>{var $3=(0,$4.useRef)(null),$5=(0,$4.useCallback)($6=>{var t=$6.target;if(t.files&&t.files.length>0)$2(t.files);t.value=""},[$2]);return{openFileDialog:(0,$4.useCallback)(()=>{if($3.current)$3.current.value="";$3.current?.click()},[]),fileInputRef:$3,handleFileChange:$5}};`,
+		},
+		{
+			ID:      "file-upload-custom-text-types",
+			Desc:    "Allow non-standard text and data files like .har to be attached as text/plain or application/json",
+			Target:  MainJS,
+			Kind:    Regexp,
+			FindRe:  fileUploadCustomTextTypesRe,
+			Replace: `function $1(a,b){b=b.split(";")[0].trim().toLowerCase();if($2.includes(b))return b;a=a.slice(a.lastIndexOf(".")+1).toLowerCase();return $3[a]||(b.startsWith("image/")||b.startsWith("video/")||b==="application/pdf"?void 0:a==="har"||a==="jsonl"?"application/json":"text/plain")}${4}`,
+		},
+		{
+			ID:      "file-upload-large-file-streaming-fallback",
+			Desc:    "Stream large files exceeding 1MB to the workspace asynchronously with progress UI",
+			Target:  MainJS,
+			Kind:    Regexp,
+			FindRe:  fileUploadLargeFileStreamingRe,
+			Replace: `if($1)if($2.size>1048576){if(window.__agyUpload){window.__agyUpload([$2]);return;}}`,
+		},
+		{
+			ID:      "question-modal-write-in-radio",
+			Desc:    "Prevent write-in radio button from unchecking on repeated label taps in single-select questions",
+			Target:  MainJS,
+			Kind:    Regexp,
+			FindRe:  questionModalWriteInRadioRe,
+			Replace: `${1}(${6}.isMultiSelect?!${4}:!0)${5}`,
+		},
+		{
+			ID:      "question-modal-write-in-focus",
+			Desc:    "Trigger write-in radio selection and keyboard focus when write-in textarea is focused",
+			Target:  MainJS,
+			Kind:    Regexp,
+			FindRe:  questionModalWriteInFocusRe,
+			Replace: `${1},onFocus:()=>{${2}||(${3}(!0),${4}.isMultiSelect||${5}())}${6}`,
+		},
+		{
+			ID:      "question-modal-prevent-radio-focus-steal",
+			Desc:    "Prevent question modal from stealing focus from write-in textarea back to objective radio options",
+			Target:  MainJS,
+			Kind:    Regexp,
+			FindRe:  questionModalPreventRadioFocusStealRe,
+			Replace: `${1}&&document.activeElement?.getAttribute?.("data-testid")!=="ask-question-writein"&&!(window.matchMedia&&window.matchMedia("(pointer:coarse)").matches)${2}`,
+			ReplaceMatch: func(g [][]byte, _ Options) string {
+				if g[3] != nil {
+					return string(g[3]) + `||document.activeElement?.getAttribute?.("data-testid")==="ask-question-writein"||(window.matchMedia&&window.matchMedia("(pointer:coarse)").matches)` + string(g[4])
+				}
+				return string(g[1]) + `&&document.activeElement?.getAttribute?.("data-testid")!=="ask-question-writein"&&!(window.matchMedia&&window.matchMedia("(pointer:coarse)").matches)` + string(g[2])
+			},
+		},
+		{
+			ID:      "autoscroll-distance-fix",
+			Desc:    "Restore stable physical container scroll distance calculation in auto-scroll hook",
+			Target:  MainJS,
+			Kind:    Regexp,
+			Enabled: func(Options) bool { return true },
+			FindRe:  autoscrollDistanceFixRe,
+			Replace: `return ${1}?(${1}.scrollHeight-${1}.clientHeight-${1}.scrollTop)<=${3}:!1`,
+		},
+		// The bundle ships a WebSocket transport that multiplexes every RPC over
+		// /connect-websocket, but only enables it behind ?useWebSocket=true. On
+		// iOS Safari the default fetch streaming transport regularly stalls
+		// mid-response, which leaves the conversation list empty or the
+		// conversation spinner running forever. Make WebSocket the default and
+		// keep ?useWebSocket=false as a per-page escape hatch. Operators can turn
+		// it off for everyone with --disable-patch websocket-transport-default.
+		// Not optional: if the selector disappears the iOS stalls come back, so
+		// doctor and the startup report must flag it as missing.
+		{
+			ID:     "websocket-transport-default",
+			Desc:   "Use the bundled WebSocket RPC transport by default instead of fetch streaming",
+			Target: MainJS,
+			Kind:   Regexp,
+			FindRe: websocketTransportDefaultRe,
+			// Up to 2.22 the function returned a boolean and the default was
+			// the fetch transport. From 2.23 it returns "off", "explicit" or
+			// "hub", where explicit is the plain WebSocket this patch has always
+			// selected and hub adds a fetch fallback after a 4s dial timeout, which
+			// is why hub is not chosen. wsTransport=1 turns the transport off in
+			// both spellings, and any other value selects explicit, so the
+			// upstream wsTransport=3 route to hub is no longer reachable. Replace is the current spelling. The older one has
+			// no second group and is handled by ReplaceMatch. Group 4 only exists
+			// in the older spelling.
+			Replace: `${1}${2}${3}==="1"?"off":"explicit"}`,
+			ReplaceMatch: func(g [][]byte, _ Options) string {
+				if g[4] != nil {
+					return string(g[1]) + string(g[4]) + `!=="1"}`
+				}
+				return string(g[1]) + string(g[2]) + string(g[3]) + `==="1"?"off":"explicit"}`
+			},
+		},
+
+		// The bundle's WebSocket client closes the socket when no frame arrives
+		// for 2s and a ping goes unanswered for another 2s. On a slow phone link
+		// the large initial frames arrive further apart than that, and the ping
+		// reply queues behind them, so the socket is dropped mid-transfer and the
+		// page reconnects and downloads everything again, which never finishes.
+		// Give the ping reply 30s instead of 2s so a slow but alive link survives.
+		// Not optional: when the anchor moves the drops come back silently, so
+		// doctor and the startup report must flag it as missing.
+		{
+			ID:      "websocket-liveness-probe-relax",
+			Desc:    "Give the WebSocket liveness ping 30s instead of 2s so slow links are not dropped mid-transfer",
+			Target:  MainJS,
+			Kind:    Regexp,
+			FindRe:  websocketLivenessProbeRe,
+			Replace: `${1}3E4${2}`,
+		},
+
+		// During app bootstrap, getServerConfiguration and getMendelFlags catch
+		// RPC errors, whereas getLocalUserInfo has no retry or fallback. If the
+		// initial RPC socket closes while a mobile PWA is briefly backgrounded,
+		// getLocalUserInfo rejects and aborts createRoot().render(), leaving #root
+		// permanently blank. Retry up to 3 times with short backoff so the
+		// transport can open a fresh socket, and fall back to a default root URI
+		// if all attempts fail so the UI still mounts.
+		{
+			ID:      "bootstrap-local-user-info-retry",
+			Desc:    "Retry getLocalUserInfo during startup so a transient socket drop does not abort mounting #root",
+			Target:  MainJS,
+			Kind:    Regexp,
+			FindRe:  bootstrapLocalUserInfoRetryRe,
+			Replace: `async function $1(a){var b=d,c=d;try{let e;for(let _i=0;_i<3;_i++)try{e=c(await b(a.lsClient.getLocalUserInfo($2)));break}catch(_e){c();if(_i===2)return{homeDirUri:$3("file:///"),username:""};await new Promise(_r=>setTimeout(_r,250*(_i+1)))}let f=e.username;return{homeDirUri:$3(e.homeDirUri),username:f}}finally{b()}}`,
+		},
+
+		// Opening the RPC socket costs several round trips, and the bundle only
+		// starts it after main.js has been fetched, revalidated and run. On a
+		// phone that is seconds of waiting before the first byte of data. This
+		// starts the same connection from the document head, in parallel with the
+		// bundle, and hands it over when the bundle asks for it.
+		{
+			ID:     "connection-prewarm",
+			Desc:   "Open the RPC WebSocket while the bundle loads instead of after it runs",
+			Target: HTML,
+			Kind:   InjectHead,
+			// Without the WebSocket transport the bundle never claims the socket,
+			// so opening one would only add load. That covers both the operator
+			// turning the transport patch off and the patch failing to match,
+			// which the proxy reports through WebSocketTransportMissing once it
+			// has seen the bundle. It must also stay after connection-watchdog,
+			// which wraps WebSocket first, so the early socket is created
+			// through that wrapper; TestConnectionPrewarmFollowsWatchdog pins
+			// that order.
+			Enabled: func(o Options) bool {
+				return !o.Disabled["websocket-transport-default"] && !o.WebSocketTransportMissing
+			},
+			Replace: connectionPrewarmScript,
+		},
+		{
+			ID:      "app-icons",
+			Desc:    "Serve the official Antigravity favicon and home-screen icon",
+			Target:  HTML,
+			Kind:    InjectHead,
+			Replace: appIcons,
+		},
+		{
+			ID:      "touch-action",
+			Desc:    "Remove the 300ms tap delay and tap highlight on controls",
+			Target:  HTML,
+			Kind:    InjectHead,
+			Replace: touchAction,
+		},
+		{
+			ID:      "safe-area-insets",
+			Desc:    "Keep the composer and toasts clear of the iOS home bar",
+			Target:  HTML,
+			Kind:    InjectHead,
+			Enabled: mobile,
+			Replace: safeArea,
+		},
+		{
+			ID:      "keyboard-detect",
+			Desc:    "Collapse the safe-area gap while the on-screen keyboard is open",
+			Target:  HTML,
+			Kind:    InjectHead,
+			Enabled: mobile,
+			Replace: keyboardDetect,
+		},
+		// A phone has no console, and the shell's geometry during the keyboard
+		// animation is the only thing that explains the remaining layout bugs.
+		// Off unless AGY_DEBUG is set.
+		{
+			ID:      "mobile-debug",
+			Desc:    "Record the viewport and shell geometry around every keyboard event",
+			Target:  HTML,
+			Kind:    InjectHead,
+			Enabled: func(o Options) bool { return o.Debug },
+			Replace: mobileDebug,
+		},
+		{
+			ID:      "mobile-signin-banner",
+			Desc:    "Show a sign-in prompt on touch devices, which Antigravity omits there",
+			Target:  HTML,
+			Kind:    InjectHead,
+			Enabled: mobile,
+			Replace: signInBanner,
+		},
+		{
+			ID:         "strip-google-preconnects",
+			Desc:       "Remove Google CDN preconnect links from index.html so no connections go to gstatic/googleapis",
+			Target:     HTML,
+			Kind:       Regexp,
+			Required:   true,
+			ReplaceAll: true,
+			FindRe:     googlePreconnectRe,
+			Replace:    "",
+		},
+		{
+			ID:         "local-katex-fonts",
+			Desc:       "Rewrite KaTeX font URLs from www.gstatic.com to local /__agy/vendor/katex/fonts/",
+			Target:     MainJS,
+			Kind:       Literal,
+			Required:   true,
+			ReplaceAll: true,
+			Find:       "https://www.gstatic.com/external_hosted/katex/dist/fonts/",
+			Replace:    "/__agy/vendor/katex/fonts/",
+		},
+		{
+			ID:         "local-google-icons",
+			Desc:       "Rewrite Google Symbols and product logo SVGs from gstatic.com to local /__agy/vendor/icons/",
+			Target:     MainJS,
+			Kind:       Literal,
+			Required:   true,
+			ReplaceAll: true,
+			Find:       "https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/ipy_notebook/default/24px.svg",
+			Replace:    "/__agy/vendor/icons/ipy_notebook.svg",
+		},
+		{
+			ID:         "local-google-productlogos",
+			Desc:       "Rewrite productlogo SVGs from www.gstatic.com to local /__agy/vendor/icons/productlogos/",
+			Target:     MainJS,
+			Kind:       Literal,
+			Required:   true,
+			ReplaceAll: true,
+			Find:       "https://www.gstatic.com/images/branding/productlogos/",
+			Replace:    "/__agy/vendor/icons/productlogos/",
+		},
+		{
+			ID:         "strip-google-fonts-import",
+			Desc:       "Strip @import url(https://fonts.googleapis.com/...) from inline diagram styles",
+			Target:     MainJS,
+			Kind:       Regexp,
+			Required:   true,
+			ReplaceAll: true,
+			FindRe:     googleFontsImportRe,
+			Replace:    "",
+		},
+		{
+			ID:     "cache-bust",
+			Desc:   "Invalidate cached bundles when the applied patch set changes",
+			Target: HTML,
+			Kind:   Literal,
+			Find:   `src="/main.js"`,
+			ReplaceFn: func(o Options) string {
+				if o.CacheKey == "" {
+					return `src="/main.js"`
+				}
+				return `src="/main.js?agy=` + o.CacheKey + `"`
+			},
+		},
+	}
+}
+
+func jsString(s string) string {
+	b, err := json.Marshal(s)
+	if err != nil {
+		return `""`
+	}
+	return string(b)
+}
+
+const appIcons = `<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">`
+
+const touchAction = `<style id="agy-touch-action">
+@media (pointer: coarse) {
+  button,input,textarea,select{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  input,textarea:not(.agy-rules-editor),select{font-size:16px !important}
+}
+</style>`
+
+const safeArea = `<style id="agy-safe-area">
+textarea.agy-rules-editor {
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+  min-height: 200px !important;
+  max-height: 500px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+}
+
+/* Flow user message action buttons (Undo, Copy, Timestamp) naturally without overlapping message text */
+div[data-testid="user-input-step"] div.bg-card:has(.user-input-buttons-container):not(.user-input-buttons-container),
+.group\/user-input-step div.bg-card:has(.user-input-buttons-container):not(.user-input-buttons-container) {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  overflow: visible !important;
+  position: relative !important;
+}
+/* Keep queued messages (waiting in execution queue) on a single row with the delete icon */
+div[data-testid="user-input-step"] div.bg-card:has([data-testid="queued-decorators"]),
+.group\/user-input-step div.bg-card:has([data-testid="queued-decorators"]) {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-end !important;
+}
+div[data-testid="user-input-step"] div.user-input-buttons-container,
+.group\/user-input-step div.user-input-buttons-container,
+div.user-input-buttons-container {
+  position: relative !important;
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+  margin-left: auto !important;
+  margin-top: 0.25rem !important;
+  align-self: flex-end !important;
+  flex-shrink: 0 !important;
+  opacity: 0.85 !important;
+  pointer-events: auto !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 0.25rem !important;
+  width: auto !important;
+  height: auto !important;
+}
+div.user-input-buttons-container > * {
+  display: inline-flex !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+}
+
+/* Tablet (iPad) and desktop (screens > 768px): Ensure sidebar padding to prevent truncation */
+@media (min-width: 769px) {
+  div[role="navigation"][aria-label="Sidebar"],
+  div[role="navigation"].bg-sidebar {
+    padding-top: max(0.75rem, env(safe-area-inset-top, 12px)) !important;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 14px)) !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* Touch devices (phones and tablets/iPad): Single safe-area management and keyboard positioning */
+@media (pointer: coarse) {
+  html,
+  body {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Adaptive Dual Mode: When a question popup or interaction is active,
+     restore Google Antigravity original pure mode:
+     - Unfreeze html & body position (position: static, overflow-y: auto)
+     - Allow native layout viewport panning (window.scrollY > 0)
+     - Allow dual scrolling (swipe down entire window + scroll top conversation)
+     - Remove keyboard-height constraints on the question card */
+  html.agy-has-question,
+  body.agy-has-question,
+  html:has(body.agy-has-question),
+  html:has([data-testid="ask-question-header-text"]),
+  html:has([data-testid="interaction-continue-button"]),
+  html:has([data-testid="interaction-skip-button"]),
+  html:has([data-testid="ask-question-writein"]),
+  html:has(input[name^="ask-question-"]),
+  html:has([data-testid="declared-permissions-modal"]),
+  body:has([data-testid="ask-question-header-text"]),
+  body:has([data-testid="interaction-continue-button"]),
+  body:has([data-testid="interaction-skip-button"]),
+  body:has([data-testid="ask-question-writein"]),
+  body:has(input[name^="ask-question-"]),
+  body:has([data-testid="declared-permissions-modal"]) {
+    position: static !important;
+    inset: auto !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: auto !important;
+  }
+
+  /* Eliminate double safe-area padding from Language Server inline style */
+  [data-testid="agent-input-box"] {
+    padding-bottom: 0px !important;
+  }
+  [data-testid="agent-input-box"] div[role="textbox"] {
+    min-height: 0 !important;
+  }
+
+  /* Smooth padding-bottom transition to prevent 34px snap/jerk when keyboard dismisses */
+  div.relative.w-full.px-4.pb-2.flex-shrink-0,
+  div.shrink-0.p-2 {
+    transition: padding-bottom 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Collapse composer wrapper padding when keyboard is open */
+  body.agy-kb-open div.relative.w-full.px-4.pb-2.flex-shrink-0,
+  body.agy-kb-open div.shrink-0.p-2,
+  html[style*="--agy-bottom"] div.relative.w-full.px-4.pb-2.flex-shrink-0,
+  html[style*="--agy-bottom"] div.shrink-0.p-2 {
+    padding-bottom: 0px !important;
+  }
+
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .relative.w-screen.h-\[100dvh\] {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100% !important;
+      max-height: 100% !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+    }
+    div.h-\[100dvh\].w-screen.flex.flex-col {
+      position: absolute !important;
+      top: var(--agy-top, 0px) !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: var(--agy-bottom, 0px) !important;
+      height: auto !important;
+      max-height: none !important;
+      padding-top: 0 !important;
+      box-sizing: border-box !important;
+      will-change: bottom;
+    }
+    /* Hardware-accelerated smooth transition on keyboard dismiss without JS cubic reflow */
+    body:not(.agy-kb-open) div.h-\[100dvh\].w-screen.flex.flex-col {
+      transition: bottom 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    /* Constrain mobile/tablet conversation container so top navbar stays pinned when keyboard opens */
+    div[data-testid="conversation-view"] {
+      max-height: 100% !important;
+      min-height: 0 !important;
+      overflow-y: hidden !important;
+      overflow-x: hidden !important;
+      overscroll-behavior-y: contain !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+    div[data-testid="conversation-view"] div.flex-1.min-h-0.overflow-y-auto,
+    div[data-testid="conversation-view"] div.h-full.overflow-y-auto,
+    div[data-testid="conversation-view"] [data-testid="autoscroll-viewport"] {
+      overscroll-behavior-y: contain !important;
+      -webkit-overflow-scrolling: touch !important;
+      overflow-anchor: auto !important;
+    }
+
+    /* Dual Mode Overrides: Restore relative flow and viewport bounds when question is active */
+    body.agy-has-question .relative.w-screen.h-\[100dvh\],
+    body:has([data-testid="ask-question-header-text"]) .relative.w-screen.h-\[100dvh\],
+    body:has([data-testid="interaction-continue-button"]) .relative.w-screen.h-\[100dvh\],
+    body:has([data-testid="ask-question-writein"]) .relative.w-screen.h-\[100dvh\],
+    body:has([data-testid="declared-permissions-modal"]) .relative.w-screen.h-\[100dvh\] {
+      position: relative !important;
+      inset: auto !important;
+      width: 100vw !important;
+      height: auto !important;
+      min-height: 100dvh !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+
+    body.agy-has-question div.h-\[100dvh\].w-screen.flex.flex-col,
+    body:has([data-testid="ask-question-header-text"]) div.h-\[100dvh\].w-screen.flex.flex-col,
+    body:has([data-testid="interaction-continue-button"]) div.h-\[100dvh\].w-screen.flex.flex-col,
+    body:has([data-testid="ask-question-writein"]) div.h-\[100dvh\].w-screen.flex.flex-col,
+    body:has([data-testid="declared-permissions-modal"]) div.h-\[100dvh\].w-screen.flex.flex-col {
+      position: relative !important;
+      top: 0 !important;
+      left: auto !important;
+      right: auto !important;
+      bottom: auto !important;
+      height: 100dvh !important;
+      max-height: 100dvh !important;
+      overflow: visible !important;
+      transition: none !important;
+    }
+
+    body.agy-has-question div[data-testid="conversation-view"],
+    body:has([data-testid="ask-question-header-text"]) div[data-testid="conversation-view"],
+    body:has([data-testid="interaction-continue-button"]) div[data-testid="conversation-view"],
+    body:has([data-testid="ask-question-writein"]) div[data-testid="conversation-view"],
+    body:has([data-testid="declared-permissions-modal"]) div[data-testid="conversation-view"] {
+      overflow-y: hidden !important;
+      max-height: 100% !important;
+      min-height: 0 !important;
+      overscroll-behavior-y: contain !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+
+    body.agy-has-question div[data-testid="conversation-view"] div.flex-1.min-h-0.overflow-y-auto,
+    body.agy-has-question div[data-testid="conversation-view"] div.h-full.overflow-y-auto,
+    body.agy-has-question div[data-testid="conversation-view"] [data-testid="autoscroll-viewport"],
+    body:has([data-testid="ask-question-header-text"]) div[data-testid="conversation-view"] div.flex-1.min-h-0.overflow-y-auto,
+    body:has([data-testid="ask-question-header-text"]) div[data-testid="conversation-view"] div.h-full.overflow-y-auto,
+    body:has([data-testid="ask-question-header-text"]) div[data-testid="conversation-view"] [data-testid="autoscroll-viewport"],
+    body:has([data-testid="interaction-continue-button"]) div[data-testid="conversation-view"] div.flex-1.min-h-0.overflow-y-auto,
+    body:has([data-testid="interaction-continue-button"]) div[data-testid="conversation-view"] div.h-full.overflow-y-auto,
+    body:has([data-testid="interaction-continue-button"]) div[data-testid="conversation-view"] [data-testid="autoscroll-viewport"],
+    body:has([data-testid="ask-question-writein"]) div[data-testid="conversation-view"] div.flex-1.min-h-0.overflow-y-auto,
+    body:has([data-testid="ask-question-writein"]) div[data-testid="conversation-view"] div.h-full.overflow-y-auto,
+    body:has([data-testid="ask-question-writein"]) div[data-testid="conversation-view"] [data-testid="autoscroll-viewport"] {
+      overflow-y: auto !important;
+      overscroll-behavior-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* Question modal / Option list constraints:
+       Ensure header and action buttons never shrink */
+    div:has(> [data-testid="ask-question-header-text"]),
+    div:has(> div > [data-testid="ask-question-header-text"]),
+    div:has(> div > div > [data-testid="ask-question-header-text"]),
+    [data-testid="ask-question-header-text"] {
+      flex-shrink: 0 !important;
+    }
+    div:has(> [data-testid="interaction-continue-button"]),
+    div:has(> * > [data-testid="interaction-continue-button"]) {
+      flex-shrink: 0 !important;
+    }
+    /* Question card / modal container: clamp max-height so action buttons never get pushed off screen */
+    div.outline-none.flex.flex-col:has([data-testid="interaction-continue-button"]),
+    div.flex.flex-col:has(> * > [data-testid="interaction-continue-button"]) {
+      max-height: calc(100dvh - var(--agy-bottom, 0px) - 50px) !important;
+      max-height: calc(100vh - var(--agy-bottom, 0px) - 50px) !important;
+      min-height: 0 !important;
+    }
+    /* Question modal options list: scroll options within available height comfortably above keyboard or screen bottom */
+    div[role="radiogroup"]:has(input[name^="ask-question-"]),
+    div.flex.flex-col:has(> * > label > input[name^="ask-question-"]),
+    div.flex.flex-col:has(> div > label > input[name^="ask-question-"]) {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      max-height: calc(100dvh - var(--agy-bottom, 0px) - 160px) !important;
+      max-height: calc(100vh - var(--agy-bottom, 0px) - 160px) !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      overscroll-behavior-y: contain !important;
+      padding-right: 2px !important;
+    }
+
+    /* Question modal / Bottom sheet: Dock container cleanly above virtual keyboard */
+    div.fixed.inset-0:has(> .aux-drawer-popup),
+    div.fixed.inset-0:has(.aux-drawer-popup) {
+      bottom: var(--agy-bottom, 0px) !important;
+    }
+    body:not(.agy-kb-open) div.fixed.inset-0:has(> .aux-drawer-popup),
+    body:not(.agy-kb-open) div.fixed.inset-0:has(.aux-drawer-popup) {
+      transition: bottom 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .aux-drawer-popup {
+      padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px)) !important;
+      max-height: calc(100% - 1rem) !important;
+    }
+    body.agy-kb-open .aux-drawer-popup,
+    html[style*="--agy-bottom"] .aux-drawer-popup {
+      padding-bottom: 0.5rem !important;
+    }
+    div.fixed.inset-0:has(> .aux-drawer-popup) .fixed.bottom-3,
+    div.fixed.inset-0:has(.aux-drawer-popup) .fixed.bottom-3 {
+      bottom: calc(0.75rem + var(--agy-bottom, 0px)) !important;
+    }
+
+    /* Dual Mode: Release drawer popup bounds in question mode */
+    body.agy-has-question div.fixed.inset-0:has(> .aux-drawer-popup),
+    body.agy-has-question div.fixed.inset-0:has(.aux-drawer-popup),
+    body:has([data-testid="ask-question-header-text"]) div.fixed.inset-0:has(> .aux-drawer-popup),
+    body:has([data-testid="ask-question-header-text"]) div.fixed.inset-0:has(.aux-drawer-popup) {
+      bottom: 0px !important;
+    }
+    body.agy-has-question div.fixed.inset-0:has(> .aux-drawer-popup) .fixed.bottom-3,
+    body.agy-has-question div.fixed.inset-0:has(.aux-drawer-popup) .fixed.bottom-3,
+    body:has([data-testid="ask-question-header-text"]) div.fixed.inset-0:has(> .aux-drawer-popup) .fixed.bottom-3,
+    body:has([data-testid="ask-question-header-text"]) div.fixed.inset-0:has(.aux-drawer-popup) .fixed.bottom-3 {
+      bottom: 0.75rem !important;
+    }
+  }
+}
+
+/* Tablet (iPad) touch devices (> 768px): Ensure composer wrappers have proper safe-area padding above home indicator */
+@media (pointer: coarse) and (min-width: 769px) {
+  div.relative.w-full.px-4.pb-2.flex-shrink-0,
+  div.shrink-0.p-2 {
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 16px)) !important;
+  }
+}
+
+/* Mobile phones only (<= 768px touch devices): Apply compact mobile styles.
+   Desktop browsers (pointer: fine) and split-screen desktop windows are completely isolated! */
+@media (pointer: coarse) and (max-width: 768px) {
+  /* Compact padding for mobile composer wrapper (prevents floating gap on mobile phones) */
+  div.relative.w-full.px-4.pb-2.flex-shrink-0,
+  div.shrink-0.p-2 {
+    padding: 0.25rem 0.5rem 0 0.5rem !important;
+    padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 6px)) !important;
+  }
+
+  /* Mobile conversation row: render [ Title | ... | Time ] side-by-side without background gradient */
+  div[data-testid^="conversation-row-"] div.absolute.top-0 {
+    position: relative !important;
+    top: auto !important;
+    bottom: auto !important;
+    right: auto !important;
+    padding-left: 0 !important;
+    opacity: 1 !important;
+    background: transparent !important;
+    margin-right: 0.25rem !important;
+  }
+  div[data-testid^="conversation-row-"] [data-testid="conversation-kebab"] {
+    display: inline-flex !important;
+    opacity: 1 !important;
+  }
+  div[data-testid^="conversation-row-"] [data-testid="conversation-pin-button"],
+  div[data-testid^="conversation-row-"] [data-testid="conversation-archive-button"],
+  div[data-testid^="conversation-row-"] [data-testid="conversation-restore-button"],
+  div[data-testid^="conversation-row-"] [data-testid="conversation-delete-button"] {
+    display: none !important;
+  }
+
+  /* Mobile pane titlebar (second header line with breadcrumbs):
+     Eliminate desktop window-control dummy spacers and align breadcrumbs seamlessly */
+  div.group\/pane > div.select-none:first-child div[aria-hidden="true"].shrink-0,
+  div.group\/pane > div.select-none:first-child div.shrink-0:empty {
+    display: none !important;
+    width: 0 !important;
+  }
+  div.group\/pane > div.select-none:first-child > div.flex.items-center.justify-end {
+    padding-right: 0.5rem !important;
+  }
+  div.group\/pane > div.select-none:first-child > div.flex.items-center.gap-1.min-w-0 {
+    padding-left: 0.75rem !important;
+  }
+}
+</style>`
+
+const keyboardDetect = `<script id="agy-keyboard-detect">
+(function () {
+  // Only activate on touch devices (pointer: coarse) with virtual keyboards.
+  // Desktop browsers with fine pointer (mouse) are completely ignored.
+  var isTouch = window.matchMedia && window.matchMedia("(pointer:coarse)").matches;
+  if (!isTouch) return;
+
+  var vv = window.visualViewport;
+  if (!vv) return;
+
+  var cachedScroller = null;
+  var wasNearBottom = true;
+  var shouldScrollOnOpen = false;
+
+  var hasActiveQuestion = false;
+  var finishingQuestionUntil = 0;
+
+  var QUESTION_SELECTOR = [
+    '[data-testid="ask-question-header-text"]',
+    '[data-testid="ask-question-writein"]',
+    'input[name^="ask-question-"]',
+    '[data-testid="interaction-continue-button"]',
+    '[data-testid="interaction-skip-button"]',
+    '[data-testid="ask-question-dismiss-button"]',
+    '[data-testid="declared-permissions-modal"]',
+    '[data-testid="declared-permissions-confirm"]'
+  ].join(",");
+
+  function checkQuestionActive() {
+    if (performance.now() < finishingQuestionUntil) {
+      return false;
+    }
+    return !!document.querySelector(QUESTION_SELECTOR);
+  }
+
+  function updateQuestionState() {
+    var has = checkQuestionActive();
+    if (has === hasActiveQuestion) return;
+    hasActiveQuestion = has;
+    if (has) {
+      checkNearBottom();
+      document.body.classList.add("agy-has-question");
+      document.documentElement.classList.add("agy-has-question");
+      document.documentElement.style.removeProperty("--agy-bottom");
+      document.documentElement.style.removeProperty("--agy-top");
+      document.body.classList.remove("agy-kb-open");
+      applied = 0;
+      appliedTop = 0;
+      goal = 0;
+      goalTop = 0;
+      settled = true;
+      holdUntil = 0;
+      if (raf) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      }
+      if (wasNearBottom) {
+        var fixBottom = function () {
+          var sc = chatScroller();
+          if (sc) sc.scrollTop = sc.scrollHeight;
+        };
+        requestAnimationFrame(fixBottom);
+        setTimeout(fixBottom, 50);
+        setTimeout(fixBottom, 150);
+      }
+    } else {
+      var act = document.activeElement;
+      if (act && (isTextInput(act) || (act.closest && act.closest(QUESTION_SELECTOR)))) {
+        if (act.blur) act.blur();
+      }
+      document.body.classList.remove("agy-has-question");
+      document.documentElement.classList.remove("agy-has-question");
+      window.scrollTo(0, 0);
+      unpan();
+      track(500);
+    }
+  }
+
+  function finishQuestion() {
+    finishingQuestionUntil = performance.now() + 800;
+    var active = document.activeElement;
+    if (active && (isTextInput(active) || (active.closest && active.closest(QUESTION_SELECTOR)))) {
+      if (active.blur) active.blur();
+    }
+    suppressComposerUntil = performance.now() + 600;
+    if (hasActiveQuestion) {
+      hasActiveQuestion = false;
+      document.body.classList.remove("agy-has-question");
+      document.documentElement.classList.remove("agy-has-question");
+      window.scrollTo(0, 0);
+      unpan();
+      track(500);
+    }
+  }
+
+  // The messages live in a scroller nested inside the conversation view.
+  // Direct selector and reference caching avoid forced layout thrashing (reflow)
+  // and prevent false-positive matching of inner scrollable code blocks (<pre><code>).
+  function chatScroller() {
+    if (cachedScroller && cachedScroller.isConnected && cachedScroller.closest('[data-testid="conversation-view"]')) {
+      return cachedScroller;
+    }
+    var root = document.querySelector('[data-testid="conversation-view"]');
+    if (!root) return null;
+
+    // Direct target: the main autoscroll viewport in Antigravity
+    var el = root.querySelector('[data-testid="autoscroll-viewport"]') ||
+             root.querySelector("div.h-full.overflow-y-auto, div.overflow-y-auto.min-h-0");
+    if (el) {
+      cachedScroller = el;
+      return el;
+    }
+
+    // Direct children fallback (avoids deep nested code blocks or pre tags)
+    var children = root.children;
+    for (var i = 0; i < children.length; i++) {
+      var child = children[i];
+      if (child.classList.contains("overflow-y-auto")) {
+        cachedScroller = child;
+        return child;
+      }
+    }
+
+    return null;
+  }
+
+  function checkNearBottom() {
+    var el = chatScroller();
+    if (!el) {
+      wasNearBottom = true;
+      return;
+    }
+    var dist = el.scrollHeight - el.clientHeight - el.scrollTop;
+    wasNearBottom = dist <= 80;
+  }
+
+  function scrollChatToBottom() {
+    if (!wasNearBottom) return;
+    var el = chatScroller();
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function isTextInput(el) {
+    if (!el) return false;
+    if (el.tagName === "TEXTAREA" || el.isContentEditable) return true;
+    if (el.tagName === "INPUT") {
+      var type = (el.type || "").toLowerCase();
+      return !/^(radio|checkbox|button|submit|reset|file|range|color|hidden|image)$/.test(type);
+    }
+    return false;
+  }
+
+  // html is position:fixed, so clientHeight is the layout viewport and does not
+  // move with Safari's toolbar the way innerHeight can.
+  function base() {
+    return document.documentElement.clientHeight || window.innerHeight;
+  }
+
+  function isPortrait() {
+    return window.innerHeight >= window.innerWidth;
+  }
+
+  function getStorageKey() {
+    return isPortrait() ? "agy-kb-p" : "agy-kb-l";
+  }
+
+  function loadPredicted() {
+    try {
+      var v = parseInt(localStorage.getItem(getStorageKey()), 10) || 0;
+      if (v < 100) v = 0;
+      return v;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function savePredicted(val) {
+    try {
+      localStorage.setItem(getStorageKey(), String(val));
+    } catch (e) {}
+  }
+
+  // Safari reveals the focused composer by panning the layout viewport, and it
+  // reports that pan as a document scroll even here, where the document is fixed
+  // and has nothing to scroll.
+  // In Question Mode, unpan is bypassed so native layout panning and swipe-down scrolling
+  // work exactly like original Google Antigravity.
+  function unpan() {
+    if (hasActiveQuestion) return;
+    var de = document.documentElement;
+    var sy = window.scrollY || window.pageYOffset || 0;
+    if (sy !== 0) window.scrollTo(0, 0);
+    if (de && de.scrollTop !== 0) de.scrollTop = 0;
+    if (document.body && document.body.scrollTop !== 0) document.body.scrollTop = 0;
+  }
+
+  // The keyboard slides up over roughly this long, while visualViewport reports
+  // its final height in a single step at the start.
+  var OPEN_MS = 250;
+
+  // Safari decides whether to pan about 40-80ms after focusin, before it reports
+  // the new viewport height. Shrinking the shell to the height the keyboard had
+  // last time gets the composer out of the way first, so there is no pan to
+  // undo -- undoing one races Safari's own animation, which is what made the
+  // shell lurch. The measurement is kept across page loads because the first
+  // focus of a session is the one with nothing to go on.
+  var predicted = loadPredicted();
+  var holdUntil = 0;
+
+  var applied = 0;
+  var appliedTop = 0;
+  var goal = 0;
+  var goalTop = 0;
+  var from = 0;
+  var fromTop = 0;
+  var moveAt = 0;
+  var settled = true;
+  var raf = 0;
+  var deadline = 0;
+
+  function write(kb, top) {
+    if (hasActiveQuestion) return;
+    if (typeof top !== "number") top = 0;
+    if (Math.abs(kb - applied) < 1 && Math.abs(top - appliedTop) < 1) return;
+
+    var opening = applied === 0 && kb > 0;
+    var closing = applied > 0 && kb === 0;
+    applied = kb;
+    appliedTop = top;
+    if (kb > 0 || top > 0) {
+      document.documentElement.style.setProperty("--agy-bottom", kb + "px");
+      document.documentElement.style.setProperty("--agy-top", top + "px");
+      document.body.classList.add("agy-kb-open");
+    } else {
+      document.documentElement.style.removeProperty("--agy-bottom");
+      document.documentElement.style.removeProperty("--agy-top");
+      document.body.classList.remove("agy-kb-open");
+    }
+    if (opening) {
+      shouldScrollOnOpen = wasNearBottom;
+      if (wasNearBottom) {
+        scrollChatToBottom();
+      }
+    } else if (closing) {
+      shouldScrollOnOpen = false;
+    }
+  }
+
+  function frame() {
+    if (hasActiveQuestion) {
+      raf = 0;
+      return;
+    }
+    unpan();
+
+    var topOffset = Math.round(vv.offsetTop || 0);
+    var rawTarget = Math.max(0, Math.round(base() - vv.height - topOffset));
+    var target = rawTarget;
+    // Ignore small changes (< 100px) such as iPad Bluetooth shortcut bar (54px)
+    if (target < 100 && topOffset === 0) target = 0;
+
+    if (target > 0) {
+      holdUntil = 0;
+      if (target !== predicted && topOffset === 0) {
+        predicted = target;
+        savePredicted(target);
+      }
+    } else if (performance.now() < holdUntil) {
+      // Hold the predicted shrink for at most 500ms after focusin while Safari
+      // prepares to animate the visual viewport. Hardware keyboards will naturally
+      // expire after holdUntil and restore the full viewport height.
+      target = predicted;
+    }
+
+    if (target !== goal || topOffset !== goalTop) {
+      goal = target;
+      goalTop = topOffset;
+      from = applied;
+      fromTop = appliedTop;
+      moveAt = performance.now();
+      settled = false;
+    }
+
+    if (goal === 0) {
+      // Closing: delegate to immediate write and CSS hardware-accelerated transition.
+      // Eliminates per-frame JS reflow fighting iOS native spring animation.
+      write(0, goalTop);
+      settled = true;
+    } else if (applied > 0) {
+      // While keyboard is already active, follow the user's touch gesture immediately
+      // without restarting the cubic animation on every frame.
+      write(goal, goalTop);
+    } else {
+      var p = Math.min(1, (performance.now() - moveAt) / OPEN_MS);
+      var curKb = Math.round(from + (goal - from) * (1 - Math.pow(1 - p, 3)));
+      var curTop = Math.round(fromTop + (goalTop - fromTop) * (1 - Math.pow(1 - p, 3)));
+      write(curKb, curTop);
+    }
+
+    if (!settled && applied === goal && appliedTop === goalTop) {
+      settled = true;
+      if (shouldScrollOnOpen && goal > 0) {
+        scrollChatToBottom();
+        shouldScrollOnOpen = false;
+      }
+    }
+
+    if (performance.now() < deadline) {
+      raf = requestAnimationFrame(frame);
+      return;
+    }
+    raf = 0;
+    write(goal, goalTop);
+    if (shouldScrollOnOpen && goal > 0) {
+      scrollChatToBottom();
+      shouldScrollOnOpen = false;
+    }
+  }
+
+  function track(ms) {
+    if (hasActiveQuestion) return;
+    unpan();
+    var until = performance.now() + ms;
+    if (until > deadline) deadline = until;
+    if (!raf) raf = requestAnimationFrame(frame);
+  }
+
+  vv.addEventListener("resize", function () {
+    updateQuestionState();
+    if (hasActiveQuestion) return;
+    predicted = loadPredicted();
+    track(700);
+  });
+  vv.addEventListener("scroll", function () {
+    unpan();
+  }, { passive: true });
+
+  // Use capture phase to intercept scroll events inside the message scroller div
+  document.addEventListener("scroll", function (e) {
+    unpan();
+    var t = e.target;
+    if (!t || t === document || (t.closest && t.closest('[data-testid="conversation-view"]'))) {
+      checkNearBottom();
+    }
+  }, { capture: true, passive: true });
+
+  // Track touch coordinates for swipe-down keyboard dismiss
+  var touchStartY = 0;
+  var touchStartX = 0;
+
+  // Cancel pending auto-scroll if user touches the conversation view during open
+  document.addEventListener("touchstart", function (e) {
+    if (e.touches && e.touches.length === 1) {
+      touchStartY = e.touches[0].clientY;
+      touchStartX = e.touches[0].clientX;
+    }
+    var t = e.target;
+    if (t && t.closest && t.closest('[data-testid="conversation-view"]')) {
+      shouldScrollOnOpen = false;
+    }
+  }, { passive: true });
+
+  window.addEventListener("touchmove", function (e) {
+    if (hasActiveQuestion) return;
+    if (applied > 0 || appliedTop > 0) {
+      unpan();
+    }
+    if (!e.touches || e.touches.length !== 1) return;
+    var curY = e.touches[0].clientY;
+    var curX = e.touches[0].clientX;
+    var deltaY = curY - touchStartY;
+    var deltaX = curX - touchStartX;
+
+    // Swipe down gesture to dismiss virtual keyboard in regular chat mode
+    if ((applied > 0 || document.body.classList.contains("agy-kb-open")) && deltaY > 45 && Math.abs(deltaY) > Math.abs(deltaX) * 1.5) {
+      var active = document.activeElement;
+      if (active && isTextInput(active) && e.target !== active && (!active.contains || !active.contains(e.target))) {
+        active.blur();
+      }
+    }
+  }, { passive: true });
+
+  window.addEventListener("touchend", function () {
+    if (hasActiveQuestion) return;
+    if (applied > 0 || appliedTop > 0) {
+      unpan();
+    }
+  }, { passive: true });
+
+  window.addEventListener("orientationchange", function () {
+    updateQuestionState();
+    if (hasActiveQuestion) return;
+    predicted = loadPredicted();
+    track(500);
+  });
+
+  function isMobileDevice() {
+    return isTouch && Math.min(window.innerWidth, window.innerHeight) <= 768;
+  }
+
+  var suppressComposerUntil = 0;
+  var lastComposerTouchTime = 0;
+  var lastDialogBlurAt = -Infinity;
+  var DIALOG_CONTAINER_SELECTOR = '[role="dialog"], [role="menu"], [data-radix-popper-content-wrapper], .aux-drawer-popup';
+
+  document.addEventListener("touchstart", function (e) {
+    var t = e.target;
+    if (t && t.closest && t.closest('[data-testid="agent-input-box"]')) {
+      lastComposerTouchTime = performance.now();
+    }
+  }, { capture: true, passive: true });
+
+  // When an objective option (radio) in ask_question is selected on mobile devices:
+  // Suppress spurious auto-focus jumping into the main agent composer after modal completion
+  document.addEventListener("change", function (e) {
+    if (!isMobileDevice()) return;
+    var t = e.target;
+    if (t && t.type === "radio" && typeof t.name === "string" && t.name.indexOf("ask-question-") === 0) {
+      if (t.value !== "__write_in__") {
+        suppressComposerUntil = performance.now() + 450;
+        if (t.blur) t.blur();
+      }
+    }
+  }, true);
+
+  // If submit / continue / skip button is clicked in ask_question or permission modal:
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (!t) return;
+    var btn = t.closest && t.closest(
+      '[data-testid="interaction-continue-button"],' +
+      '[data-testid="interaction-skip-button"],' +
+      '[data-testid="ask-question-dismiss-button"],' +
+      '[data-testid="declared-permissions-confirm"]'
+    );
+    if (btn) {
+      // In multi-question steps, "Continue" moves to next step; only "Submit" finishes the entire modal
+      var isNextStepOnly = btn.getAttribute("data-testid") === "interaction-continue-button" &&
+        btn.textContent && btn.textContent.indexOf("Continue") !== -1;
+      if (!isNextStepOnly) {
+        finishQuestion();
+      }
+    }
+  }, true);
+
+  window.addEventListener("focusin", function (e) {
+    updateQuestionState();
+    if (hasActiveQuestion) {
+      return;
+    }
+    var t = e.target;
+
+    if (t && t.tagName === "INPUT" && (t.type === "radio" || t.type === "checkbox")) {
+      unpan();
+    }
+
+    if (t && isTextInput(t)) {
+      // On mobile devices, if the main agent composer is auto-focused immediately after question submission,
+      // blur it so the virtual keyboard does not pop up unexpectedly.
+      // Deliberate user touch on the composer and inputs outside the composer are never blocked!
+      if (isMobileDevice() && performance.now() < suppressComposerUntil) {
+        var isMainComposer = t.closest && t.closest('[data-testid="agent-input-box"]');
+        if (isMainComposer) {
+          var isDirectUserTap = (performance.now() - lastComposerTouchTime) < 500;
+          if (!isDirectUserTap) {
+            if (t.blur) t.blur();
+            return;
+          }
+        }
+      }
+
+      checkNearBottom();
+      predicted = loadPredicted();
+      // Closing a dialog, popover, or bottom sheet (for example the model picker) hands focus
+      // back to the composer without opening the keyboard. Shrinking for a keyboard
+      // that never arrives makes the chat jump up and settle back, so the prediction
+      // is skipped there. If the keyboard does open, the viewport resize still
+      // moves the shell, just without the speculative jump.
+      var returnedFromDialog = (performance.now() - lastDialogBlurAt < 500) &&
+        !(t.closest && t.closest(DIALOG_CONTAINER_SELECTOR));
+      // Only apply speculative shrink on mobile phones in portrait mode.
+      // Tablets (iPad) and hardware keyboard users must NOT speculatively shrink before visualViewport reports.
+      if (predicted >= 100 && applied === 0 && isMobileDevice() && isPortrait() && !returnedFromDialog) {
+        holdUntil = performance.now() + 500;
+        goal = from = predicted;
+        goalTop = fromTop = 0;
+        moveAt = performance.now();
+        write(predicted, 0);
+      }
+      track(900);
+    }
+  });
+
+  document.addEventListener("pointerdown", function (e) {
+    var t = e.target;
+    if (document.querySelector(DIALOG_CONTAINER_SELECTOR)) {
+      if (t && (!t.closest || !t.closest(DIALOG_CONTAINER_SELECTOR) || t.closest('[data-testid="modal-close"]') || t.closest('button[aria-label="Close"]'))) {
+        lastDialogBlurAt = performance.now();
+      }
+    }
+  }, true);
+
+  window.addEventListener("focusout", function (e) {
+    var t = e.target;
+    if (t && t.closest && t.closest(DIALOG_CONTAINER_SELECTOR)) {
+      lastDialogBlurAt = performance.now();
+    }
+    if (hasActiveQuestion) return;
+    track(500);
+  });
+
+  // Track IME composition completion timestamp for WebKit Enter race condition
+  document.addEventListener("compositionend", function () {
+    window.__agyLastCompEnd = performance.now();
+  }, true);
+
+  // Mobile Conversation Top-Scroll Guard & Anchoring
+  // Preserves scroll position when prepending older messages to prevent infinite fetch storms.
+  var lastScrollHeight = 0;
+  var lastScrollTop = 0;
+  var currentConvoUrl = window.location.pathname;
+  var guardedScroller = null;
+  var convoNavigatedAt = performance.now();
+  var userScrolledNearTop = false;
+
+  function handleScrollerScroll() {
+    var sc = chatScroller();
+    if (!sc) return;
+    lastScrollTop = sc.scrollTop;
+    lastScrollHeight = sc.scrollHeight;
+    // Track if user actively scrolled near top (< 120px) after initial mount
+    if (sc.scrollTop <= 120 && performance.now() - convoNavigatedAt >= 2500) {
+      userScrolledNearTop = true;
+    } else if (sc.scrollTop > 150) {
+      userScrolledNearTop = false;
+    }
+  }
+
+  function handleScrollerMutation() {
+    var sc = chatScroller();
+    if (!sc) return;
+
+    if (window.location.pathname !== currentConvoUrl) {
+      currentConvoUrl = window.location.pathname;
+      convoNavigatedAt = performance.now();
+      userScrolledNearTop = false;
+      lastScrollHeight = sc.scrollHeight;
+      lastScrollTop = sc.scrollTop;
+      return;
+    }
+
+    // Guard: During initial conversation load (first 2.5s), messages are being mounted.
+    // Never misinterpret initial message mount as a user-initiated prepend!
+    if (performance.now() - convoNavigatedAt < 2500) {
+      lastScrollHeight = sc.scrollHeight;
+      lastScrollTop = sc.scrollTop;
+      return;
+    }
+
+    var curHeight = sc.scrollHeight;
+    var curTop = sc.scrollTop;
+
+    // Detect prepend: content expanded while user was actively scrolled near top
+    if (userScrolledNearTop && lastScrollHeight > 0 && curHeight > lastScrollHeight) {
+      var delta = curHeight - lastScrollHeight;
+      if (lastScrollTop <= 100 && delta >= 30) {
+        // Prepend detected: anchor scroll position by adding delta
+        var targetTop = lastScrollTop + delta;
+        sc.scrollTop = targetTop;
+        requestAnimationFrame(function () {
+          sc.scrollTop = targetTop;
+        });
+        setTimeout(function () {
+          if (sc.scrollTop < delta / 2) sc.scrollTop = targetTop;
+        }, 50);
+        setTimeout(function () {
+          if (sc.scrollTop < delta / 2) sc.scrollTop = targetTop;
+        }, 150);
+        setTimeout(function () {
+          if (sc.scrollTop < delta / 2) sc.scrollTop = targetTop;
+        }, 300);
+      }
+    }
+
+    lastScrollHeight = curHeight;
+    lastScrollTop = curTop;
+  }
+
+  function attachScrollerGuard() {
+    var sc = chatScroller();
+    if (!sc) return;
+    if (guardedScroller !== sc) {
+      if (guardedScroller) {
+        guardedScroller.removeEventListener("scroll", handleScrollerScroll);
+      }
+      guardedScroller = sc;
+      lastScrollHeight = sc.scrollHeight;
+      lastScrollTop = sc.scrollTop;
+      sc.addEventListener("scroll", handleScrollerScroll, { passive: true });
+    }
+  }
+
+  // Observe DOM for question modal or interaction card appearance and scroller updates
+  var lastQuestionModalSeen = false;
+  var modalObserver = new MutationObserver(function () {
+    updateQuestionState();
+    attachScrollerGuard();
+    handleScrollerMutation();
+    var hasModal = hasActiveQuestion;
+    if (hasModal && !lastQuestionModalSeen) {
+      lastQuestionModalSeen = true;
+    } else if (!hasModal && lastQuestionModalSeen) {
+      lastQuestionModalSeen = false;
+    }
+  });
+
+  if (document.body) {
+    modalObserver.observe(document.body, { childList: true, subtree: true });
+    updateQuestionState();
+    attachScrollerGuard();
+  } else {
+    document.addEventListener("DOMContentLoaded", function () {
+      if (document.body) {
+        modalObserver.observe(document.body, { childList: true, subtree: true });
+        updateQuestionState();
+        attachScrollerGuard();
+      }
+    }, { once: true });
+  }
+})();
+</script>`
+
+const mobileDebug = `<script id="agy-debug">
+(function () {
+  var vv = window.visualViewport;
+  if (!vv) return;
+
+  var ENDPOINT = "/__agy/api/debug/log";
+
+  // The two selectors the safe-area patch relies on. Their match count is logged
+  // on every sample because a selector that matches nothing, or several nested
+  // shells, still reports as "applied" in the patch report.
+  var OUTER = ".relative.w-screen.h-\\[100dvh\\]";
+  var INNER = "div.h-\\[100dvh\\].w-screen.flex.flex-col";
+
+  var session = Math.random().toString(36).slice(2, 8);
+  var episodes = 0;
+
+  function n(v) { return Math.round(v); }
+  function pad(v, w) { v = String(v); while (v.length < w) v = " " + v; return v; }
+  function padR(v, w) { v = String(v); while (v.length < w) v += " "; return v; }
+
+  function all(sel) {
+    try { return document.querySelectorAll(sel); } catch (e) { return []; }
+  }
+  function one(sel) {
+    try { return document.querySelector(sel); } catch (e) { return null; }
+  }
+
+  function box(el) {
+    if (!el) return "-";
+    var b = el.getBoundingClientRect();
+    return n(b.top) + ".." + n(b.bottom) + "/h" + n(b.height);
+  }
+
+  function insets() {
+    var probe = document.createElement("div");
+    probe.style.cssText =
+      "position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;padding:" +
+      "env(safe-area-inset-top) env(safe-area-inset-right) " +
+      "env(safe-area-inset-bottom) env(safe-area-inset-left)";
+    document.documentElement.appendChild(probe);
+    var s = getComputedStyle(probe);
+    var out = [s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft].join("/");
+    probe.parentNode.removeChild(probe);
+    return out.replace(/px/g, "");
+  }
+
+  // In a conversation the composer's scroller is the conversation view; on the
+  // home screen the history list is virtualised and its scroller is an ancestor.
+  function scroller() {
+    var el = one('[data-testid="conversation-view"]');
+    if (el) return el;
+    el = one('[data-testid^="conversation-list-"]');
+    while (el && el !== document.body) {
+      if (/auto|scroll/.test(getComputedStyle(el).overflowY)) return el;
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  // Focusing an input makes the browser reveal it by scrolling ancestors, and an
+  // overflow:hidden box still scrolls programmatically. An offset left behind
+  // there moves the whole shell without touching the document scroll, so name
+  // every ancestor of the composer that is not at zero.
+  function scrolled() {
+    var out = [];
+    var el = one('[contenteditable="true"]');
+    for (var i = 0; el && i < 15 && el !== document.documentElement; i++) {
+      if (el.scrollTop || el.scrollLeft) {
+        out.push(
+          el.tagName.toLowerCase() +
+          (el.getAttribute("data-testid") ? "[" + el.getAttribute("data-testid") + "]" : "") +
+          "." + String(el.className || "").split(/\s+/).slice(0, 2).join(".") +
+          "=" + n(el.scrollTop) + "," + n(el.scrollLeft));
+      }
+      el = el.parentElement;
+    }
+    return out.length ? out.join(" ") : "-";
+  }
+
+  function heads() {
+    var nodes = all('[data-testid="section-header"]');
+    var out = [];
+    for (var i = 0; i < nodes.length; i++) {
+      var wrap = nodes[i].closest("[data-index]") || nodes[i];
+      var s = getComputedStyle(wrap);
+      out.push(
+        (nodes[i].getAttribute("data-title") || "?") +
+        " " + s.position + " top:" + s.top + " z:" + s.zIndex + " " + box(wrap));
+    }
+    return out.length ? out.join(" | ") : "-";
+  }
+
+  // Which element actually holds the messages is not obvious from the class names,
+  // and picking the wrong one is why a chat can stay scrolled away from its last
+  // message. List every scroller that has something to scroll.
+  function scrollers() {
+    var nodes = document.querySelectorAll("body *");
+    var out = [];
+    for (var i = 0; i < nodes.length && out.length < 5; i++) {
+      var el = nodes[i];
+      if (el.scrollHeight <= el.clientHeight + 4) continue;
+      if (!/auto|scroll/.test(getComputedStyle(el).overflowY)) continue;
+      out.push(
+        (el.getAttribute("data-testid") || el.tagName.toLowerCase() +
+          "." + String(el.className || "").split(/\s+/)[0]) +
+        ":st" + n(el.scrollTop) + "/sh" + el.scrollHeight + "/ch" + el.clientHeight);
+    }
+    return out.length ? out.join(" ") : "-";
+  }
+
+  function stickyOffset() {
+    var el = one('[data-testid="history-search-input"]');
+    el = el && el.closest(".sticky");
+    return el ? n(el.getBoundingClientRect().height) : "-";
+  }
+
+  function state() {
+    var de = document.documentElement;
+    var sc = scroller();
+    return [
+      "vv=" + n(vv.width) + "x" + n(vv.height) + "+" + n(vv.offsetTop) + "," + n(vv.offsetLeft),
+      "pageTop=" + n(vv.pageTop),
+      "scale=" + vv.scale,
+      "win=" + window.innerWidth + "x" + window.innerHeight,
+      "dch=" + de.clientHeight,
+      "dsh=" + de.scrollHeight,
+      "dst=" + de.scrollTop,
+      "sy=" + n(window.scrollY),
+      "kb=" + (de.style.getPropertyValue("--agy-bottom") || "-"),
+      "outer=" + all(OUTER).length + ":" + box(one(OUTER)),
+      "inner=" + all(INNER).length + ":" + box(one(INNER)),
+      "nav=" + box(one('[data-testid="mobile-open-settings"]')),
+      "comp=" + box(one('[contenteditable="true"]')),
+      "scr=" + (sc ? "st" + n(sc.scrollTop) + "/sh" + sc.scrollHeight + "/ch" + sc.clientHeight : "-"),
+      "panned=" + scrolled(),
+      "scrollers=[" + scrollers() + "]",
+      "stickyTop=" + stickyOffset(),
+      "heads=[" + heads() + "]"
+    ].join(" ");
+  }
+
+  var lines = null;
+  var startedAt = 0;
+  var deadline = 0;
+  var raf = 0;
+  var last = "";
+
+  function push(ev) {
+    var s = state();
+    if (ev === "raf" && s === last) return;
+    last = s;
+    // Safari drops a keepalive body over 64KB, so stay well inside one request.
+    if (lines.length > 120) return;
+    lines.push("  t=" + pad(n(performance.now() - startedAt), 5) + " ev=" + padR(ev, 9) + " " + s);
+  }
+
+  function flush() {
+    var body = lines.join("\n") + "\n";
+    lines = null;
+    try {
+      fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        credentials: "same-origin",
+        body: body
+      });
+    } catch (e) {}
+  }
+
+  function loop() {
+    push("raf");
+    if (performance.now() < deadline) {
+      raf = requestAnimationFrame(loop);
+      return;
+    }
+    raf = 0;
+    flush();
+  }
+
+  function begin(ev, ms) {
+    if (!lines) {
+      lines = [];
+      startedAt = performance.now();
+      last = "";
+      episodes++;
+      lines.push(
+        "=== " + new Date().toISOString() +
+        " session=" + session + " ep=" + episodes + " trigger=" + ev +
+        " standalone=" + (navigator.standalone === true) +
+        "/" + window.matchMedia("(display-mode:standalone)").matches +
+        " screen=" + screen.width + "x" + screen.height +
+        " dpr=" + window.devicePixelRatio +
+        " env(t/r/b/l)=" + insets() +
+        " ua=" + navigator.userAgent);
+    }
+    push(ev);
+    var until = performance.now() + ms;
+    if (until > deadline) deadline = until;
+    if (!raf) raf = requestAnimationFrame(loop);
+  }
+
+  function editable(t) {
+    if (!t) return false;
+    if (t.tagName === "TEXTAREA" || t.isContentEditable) return true;
+    if (t.tagName === "INPUT") {
+      var type = (t.type || "").toLowerCase();
+      return !/^(radio|checkbox|button|submit|reset|file|range|color|hidden|image)$/.test(type);
+    }
+    return false;
+  }
+
+  vv.addEventListener("resize", function () { begin("vv-resize", 700); });
+  vv.addEventListener("scroll", function () { begin("vv-scroll", 400); });
+  window.addEventListener("focusin", function (e) {
+    if (editable(e.target)) begin("focusin", 1500);
+  });
+  window.addEventListener("focusout", function (e) {
+    if (editable(e.target)) begin("focusout", 1200);
+  });
+})();
+</script>`
+
+const signInBanner = `<style id="agy-signin-banner-style">
+#agy-signin-banner-el {
+  position: fixed;
+  z-index: 40;
+  display: none;
+  text-decoration: none;
+  animation: agy-banner-in 0.18s ease-out;
+}
+@keyframes agy-banner-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+</style>
+<script id="agy-signin-banner">
+(function () {
+  if (!(window.matchMedia && window.matchMedia("(pointer:coarse)").matches)) return;
+  if (location.pathname.indexOf("/__agy/") === 0) return;
+
+  // Antigravity's own auth banner, reproduced with its classes and icon so it themes
+  // with the app. Its mobile layout omits the real one, which on desktop sits above
+  // the composer card.
+  //
+  // The banner lives on document.body and is positioned over that spot rather than
+  // inserted next to the card: the card is inside React's tree, so anything put
+  // there is removed on the next render, and re-adding it in a loop thrashes the
+  // layout badly enough to break the app's own keyboard handling.
+  var ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 -960 960 960"' +
+    ' fill="currentColor" class="h-4 w-4 shrink-0 text-yellow-500" aria-hidden="true">' +
+    '<path d="M74.62-140L480-840L885.38-140H74.62ZM178-200H782L480-720L178-200Zm324.92-57.08q9.38-9.38 ' +
+    '9.38-22.92t-9.38-22.92T480-312.31t-22.92,9.38T447.69-280t9.38,22.92T480-247.69t22.92-9.38ZM450-352.31h60v-200H450v200ZM480-460Z"/>' +
+    "</svg>";
+
+  var banner = document.createElement("a");
+  banner.id = "agy-signin-banner-el";
+  banner.href = "/__agy/signin";
+  banner.className =
+    "bg-muted px-3 min-h-[30px] py-1.5 flex items-center gap-2 text-sm border rounded-lg";
+  banner.innerHTML =
+    ICON +
+    '<span class="text-foreground"><span>To use the agent, please login </span>' +
+    '<span class="text-current underline">here</span></span>';
+
+  // The composer is the only editable region on screen. Its card is the outermost
+  // ancestor that still has a visible margin on both sides, since the wrappers above
+  // it span the full width. Requiring an actual inset rather than merely "not quite
+  // full width" is what keeps the banner from stretching edge to edge. Matching on
+  // width rather than height keeps it detectable while the keyboard is open, which
+  // shrinks innerHeight and broke an earlier ratio-based rule.
+  function composerCard() {
+    var editable = document.querySelector('[contenteditable="true"]');
+    if (!editable) return null;
+
+    var card = null;
+    var node = editable;
+    var viewport = window.innerWidth;
+
+    for (var i = 0; i < 10 && node.parentElement && node.parentElement !== document.body; i++) {
+      node = node.parentElement;
+      var box = node.getBoundingClientRect();
+      if (box.left >= 6 && box.right <= viewport - 6 && box.width >= viewport * 0.5 && box.height > 24) {
+        card = node;
+      }
+    }
+    return card;
+  }
+
+  // Antigravity does render its own banner inside a chat, just not on the project
+  // list, so showing ours unconditionally puts two of them on screen. Detect the real
+  // one by the copy it shares with the desktop layout and stand down when it is
+  // there. If Google restyles it this stops matching and the duplicate comes back,
+  // which is the mild failure mode of the two.
+  function nativeBanner() {
+    var nodes = document.querySelectorAll('[class*="bg-muted"]');
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i] !== banner && nodes[i].textContent.indexOf("please login") >= 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  var lastKey = "";
+
+  function sync() {
+    var card = nativeBanner() ? null : composerCard();
+    if (!card) {
+      if (banner.style.display !== "none") banner.style.display = "none";
+      lastKey = "";
+      return;
+    }
+
+    var box = card.getBoundingClientRect();
+    if (box.width <= 0) return;
+
+    if (banner.style.display === "none") banner.style.display = "flex";
+
+    // Both getBoundingClientRect and position:fixed resolve against the layout
+    // viewport, so tracking the card needs no adjustment for Safari's pan: the two
+    // move together. Subtracting the pan here pushed the banner off-screen instead.
+    var height = banner.offsetHeight || 32;
+    var top = Math.max(4, box.top - height - 8);
+    var key = box.left + ":" + box.width + ":" + top;
+    if (key === lastKey) return;
+    lastKey = key;
+
+    banner.style.left = box.left + "px";
+    banner.style.width = box.width + "px";
+    banner.style.top = top + "px";
+  }
+
+  function start() {
+    document.body.appendChild(banner);
+    sync();
+
+    window.addEventListener("resize", sync, { passive: true });
+    window.addEventListener("scroll", sync, { passive: true });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", sync, { passive: true });
+      window.visualViewport.addEventListener("scroll", sync, { passive: true });
+    }
+    setInterval(sync, 1000);
+  }
+
+  function check() {
+    fetch("/__agy/api/signin/status", { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d && (d.needsSignIn !== undefined ? d.needsSignIn : !d.signedIn)) start(); })
+      .catch(function () {});
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", check);
+  } else {
+    check();
+  }
+})();
+</script>`
+
+const uploaderScript = `<script>
+(function() {
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    var k = 1024;
+    var sizes = ['B', 'KB', 'MB', 'GB'];
+    var i = Math.floor(Math.log(bytes) / Math.log(k));
+    return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+  }
+
+  function getActiveConversationId() {
+    var params = new URLSearchParams(window.location.search);
+    var id = params.get('conversationId') || params.get('c');
+    if (id) return id;
+    var path = window.location.pathname;
+    if (path.startsWith('/c/')) {
+      return path.slice(3).split('/')[0];
+    }
+    return 'temp_' + Date.now().toString(36);
+  }
+
+  function getActiveProjectPath() {
+    var params = new URLSearchParams(window.location.search);
+    return params.get('project') || params.get('workspace') || '';
+  }
+
+  function insertPromptPath(path) {
+    var el = document.querySelector('[contenteditable="true"]');
+    if (el) {
+      el.focus();
+      var textToInsert = path + ' ';
+      try {
+        if (!document.execCommand('insertText', false, textToInsert)) {
+          el.innerText = (el.innerText ? el.innerText + ' ' : '') + textToInsert;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      } catch (e) {
+        el.innerText = (el.innerText ? el.innerText + ' ' : '') + textToInsert;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  }
+
+  function uploadSingleFile(file) {
+    var convoId = getActiveConversationId();
+    var projectPath = getActiveProjectPath();
+
+    var container = document.getElementById('agy-upload-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'agy-upload-container';
+      container.style.cssText = 'position:fixed;bottom:84px;right:16px;z-index:99999;display:flex;flex-direction:column;gap:8px;max-width:340px;width:calc(100vw - 32px);pointer-events:none;';
+      document.body.appendChild(container);
+    }
+
+    var card = document.createElement('div');
+    card.style.cssText = 'background:#18181b;border:1px solid #27272a;border-radius:8px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,0.5);color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;font-size:12px;pointer-events:auto;transition:all 0.2s ease-out;';
+
+    var header = document.createElement('div');
+    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;';
+    
+    var nameSpan = document.createElement('span');
+    nameSpan.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:#e4e4e7;';
+    nameSpan.textContent = file.name;
+    
+    var pctSpan = document.createElement('span');
+    pctSpan.style.cssText = 'color:#a1a1aa;font-size:11px;font-variant-numeric:tabular-nums;flex-shrink:0;';
+    pctSpan.textContent = '0%';
+
+    header.appendChild(nameSpan);
+    header.appendChild(pctSpan);
+
+    var barBg = document.createElement('div');
+    barBg.style.cssText = 'width:100%;height:3px;background:#27272a;border-radius:99px;overflow:hidden;margin-bottom:6px;';
+    var bar = document.createElement('div');
+    bar.style.cssText = 'width:0%;height:100%;background:#3b82f6;border-radius:99px;transition:width 0.1s linear;';
+    barBg.appendChild(bar);
+
+    var footer = document.createElement('div');
+    footer.style.cssText = 'display:flex;justify-content:space-between;font-size:10px;color:#71717a;font-variant-numeric:tabular-nums;';
+    
+    var bytesSpan = document.createElement('span');
+    bytesSpan.textContent = '0 / ' + formatBytes(file.size);
+    
+    var speedSpan = document.createElement('span');
+    speedSpan.textContent = 'Uploading...';
+
+    footer.appendChild(bytesSpan);
+    footer.appendChild(speedSpan);
+
+    card.appendChild(header);
+    card.appendChild(barBg);
+    card.appendChild(footer);
+    container.appendChild(card);
+
+    var formData = new FormData();
+    formData.append('conversationId', convoId);
+    formData.append('projectPath', projectPath);
+    formData.append('file', file);
+
+    var xhr = new XMLHttpRequest();
+    var startTime = Date.now();
+
+    xhr.upload.onprogress = function(e) {
+      if (e.lengthComputable) {
+        var pct = Math.round((e.loaded / e.total) * 100);
+        bar.style.width = pct + '%';
+        pctSpan.textContent = pct + '%';
+        bytesSpan.textContent = formatBytes(e.loaded) + ' / ' + formatBytes(e.total);
+        var elapsed = (Date.now() - startTime) / 1000;
+        if (elapsed > 0.4) {
+          var speed = e.loaded / elapsed;
+          speedSpan.textContent = formatBytes(speed) + '/s';
+        }
+      }
+    };
+
+    xhr.onload = function() {
+      if (xhr.status === 200) {
+        try {
+          var res = JSON.parse(xhr.responseText);
+          bar.style.background = '#22c55e';
+          pctSpan.textContent = 'Completed';
+          pctSpan.style.color = '#22c55e';
+          speedSpan.textContent = res.relativePath;
+          
+          insertPromptPath(res.relativePath);
+
+          setTimeout(function() {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(6px)';
+            setTimeout(function() { card.remove(); }, 200);
+          }, 2500);
+        } catch (err) {
+          showError('Invalid server response');
+        }
+      } else {
+        showError('Upload failed (' + xhr.status + ')');
+      }
+    };
+
+    xhr.onerror = function() {
+      showError('Network error');
+    };
+
+    xhr.ontimeout = function() {
+      showError('Request timed out');
+    };
+
+    function showError(msg) {
+      bar.style.background = '#ef4444';
+      pctSpan.textContent = 'Failed';
+      pctSpan.style.color = '#ef4444';
+      speedSpan.textContent = msg;
+      setTimeout(function() { card.remove(); }, 5000);
+    }
+
+    xhr.timeout = 120000;
+    xhr.open('POST', '/__agy/api/upload');
+    xhr.send(formData);
+  }
+
+  window.__agyUpload = function(files) {
+    if (!files || files.length === 0) return;
+    for (var i = 0; i < files.length; i++) {
+      uploadSingleFile(files[i]);
+    }
+  };
+
+  var hiddenFileInput = null;
+  window.__agyTriggerUpload = function() {
+    if (!hiddenFileInput) {
+      hiddenFileInput = document.createElement('input');
+      hiddenFileInput.type = 'file';
+      hiddenFileInput.multiple = true;
+      hiddenFileInput.style.display = 'none';
+      document.body.appendChild(hiddenFileInput);
+      hiddenFileInput.addEventListener('change', function(e) {
+        if (e.target.files && e.target.files.length > 0) {
+          window.__agyUpload(e.target.files);
+        }
+        e.target.value = '';
+      });
+    }
+    hiddenFileInput.value = '';
+    hiddenFileInput.click();
+  };
+
+  var NATIVE_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/webp'];
+
+  function isNativeImageFile(f) {
+    if (!f || !f.type) return false;
+    return NATIVE_IMAGE_TYPES.indexOf(f.type.split(';')[0].trim().toLowerCase()) !== -1;
+  }
+
+  function dismissNativeDragOverlays() {
+    window.dispatchEvent(new MouseEvent('mouseup'));
+    try {
+      window.dispatchEvent(new DragEvent('dragleave', { relatedTarget: null }));
+    } catch (_) {
+      var leaveEvent = new Event('dragleave');
+      try {
+        Object.defineProperty(leaveEvent, 'relatedTarget', { value: null });
+      } catch (_) {
+        leaveEvent.relatedTarget = null;
+      }
+      window.dispatchEvent(leaveEvent);
+    }
+  }
+
+  // Drag and drop support using Antigravity native UI
+  window.addEventListener('dragover', function(e) {
+    if (e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }, true);
+
+  window.addEventListener('drop', function(e) {
+    // Immediately reset native drag overlay state
+    window.dispatchEvent(new MouseEvent('mouseup'));
+
+    var files = e.dataTransfer && e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    var dirNames = {};
+    var items = e.dataTransfer && e.dataTransfer.items;
+    if (items) {
+      for (var j = 0; j < items.length; j++) {
+        try {
+          var item = items[j];
+          if (item && item.kind === 'file' && typeof item.webkitGetAsEntry === 'function') {
+            var entry = item.webkitGetAsEntry();
+            if (entry && entry.isDirectory && entry.name) {
+              dirNames[entry.name] = true;
+            }
+          }
+        } catch (_) {}
+      }
+    }
+
+    var uploadFiles = [];
+    var needsStreaming = false;
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      if (dirNames[f.name]) continue;
+      uploadFiles.push(f);
+      if (!isNativeImageFile(f)) {
+        needsStreaming = true;
+      }
+    }
+
+    if (needsStreaming && uploadFiles.length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === 'function') {
+        e.stopImmediatePropagation();
+      }
+      dismissNativeDragOverlays();
+      if (window.__agyUpload) {
+        window.__agyUpload(uploadFiles);
+      }
+    }
+  }, true);
+})();
+</script>`
+
+const lineStartNavScript = `<script id="agy-line-start-nav">
+(function() {
+  var isMac = typeof navigator !== 'undefined' && 
+    Boolean((navigator.userAgentData && navigator.userAgentData.platform === 'macOS') ||
+            (navigator.platform && navigator.platform.toUpperCase().indexOf('MAC') >= 0) ||
+            (navigator.userAgent && /Macintosh|Mac OS X/.test(navigator.userAgent)));
+
+  window.addEventListener('keydown', function(e) {
+    if (e.key !== 'ArrowLeft' && e.key !== 'Home') return;
+
+    var active = document.activeElement;
+    if (!active || !active.isContentEditable) return;
+
+    // Only intercept when decorators (slash commands, mentions, chips) are present
+    if (!active.querySelector('[data-lexical-decorator="true"]')) return;
+
+    var sel = window.getSelection();
+    if (!sel || !sel.rangeCount || typeof sel.modify !== 'function') return;
+
+    var alter = e.shiftKey ? 'extend' : 'move';
+
+    // Case 1: Pure Home (all platforms) -> move to line start
+    if (e.key === 'Home' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      try {
+        sel.modify(alter, 'backward', 'lineboundary');
+        e.preventDefault();
+        e.stopPropagation();
+      } catch (_) {}
+      return;
+    }
+
+    // Case 2: Cmd + ArrowLeft on macOS -> move to line start
+    if (isMac && e.key === 'ArrowLeft' && e.metaKey && !e.ctrlKey && !e.altKey) {
+      try {
+        sel.modify(alter, 'backward', 'lineboundary');
+        e.preventDefault();
+        e.stopPropagation();
+      } catch (_) {}
+      return;
+    }
+
+    // Case 3: Ctrl + ArrowLeft on Non-Mac (Windows/Linux)
+    // Upstream Lexical's MOVE_TO_START mistakenly triggers on Ctrl+Left on non-Mac
+    // and jumps to position 0 when decorators exist. Restore native word navigation.
+    if (!isMac && e.key === 'ArrowLeft' && e.ctrlKey && !e.metaKey && !e.altKey) {
+      try {
+        sel.modify(alter, 'backward', 'word');
+        e.preventDefault();
+        e.stopPropagation();
+      } catch (_) {}
+      return;
+    }
+  }, true);
+})();
+</script>`
+
+const connectionWatchdogScript = `<script id="agy-connection-watchdog">
+(function () {
+  var lastPingSuccess = 0;
+  var activePingPromise = null;
+  var MAX_RELOAD_ATTEMPTS = 2;
+  var lastNetworkActivity = Date.now();
+
+  // Track fetch activity, including chunks read through response.body.getReader()
+  // as streaming RPC clients do, so we never interrupt in-progress downloads
+  if (window.fetch && !window.__agyFetchActivityTracked) {
+    window.__agyFetchActivityTracked = true;
+    var _origFetchForWatchdog = window.fetch;
+    window.fetch = function () {
+      lastNetworkActivity = Date.now();
+      var p = _origFetchForWatchdog.apply(this, arguments);
+      if (p && p.then) {
+        return p.then(function (res) {
+          lastNetworkActivity = Date.now();
+          if (res && res.body && typeof res.body.getReader === "function") {
+            var _origGetReader = res.body.getReader.bind(res.body);
+            res.body.getReader = function () {
+              var reader = _origGetReader.apply(this, arguments);
+              if (reader && typeof reader.read === "function") {
+                var _origRead = reader.read.bind(reader);
+                reader.read = function () {
+                  return _origRead.apply(this, arguments).then(function (chunk) {
+                    lastNetworkActivity = Date.now();
+                    return chunk;
+                  }, function (err) {
+                    lastNetworkActivity = Date.now();
+                    throw err;
+                  });
+                };
+              }
+              return reader;
+            };
+          }
+          return res;
+        }, function (err) {
+          lastNetworkActivity = Date.now();
+          throw err;
+        });
+      }
+      return p;
+    };
+  }
+
+  // The RPC transport may run over a single WebSocket instead of fetch, so
+  // count inbound data frames as network activity too. The transport probes
+  // an idle socket with a ping; small liveness frames like the replies are
+  // skipped so a healthy socket with a stuck view still lets the watchdog fire.
+  if (window.WebSocket && window.Proxy && window.Reflect && !window.__agyWsActivityTracked) {
+    window.__agyWsActivityTracked = true;
+    var wsControlFrameRe = /"type"\s*:\s*"(?:ping|pong|heartbeat|keepalive)"/;
+    var onWsMessage = function (e) {
+      var d = e && e.data;
+      if (typeof d === "string" && d.length < 512 && wsControlFrameRe.test(d)) return;
+      lastNetworkActivity = Date.now();
+    };
+    var onWsOpen = function () { lastNetworkActivity = Date.now(); };
+    window.WebSocket = new Proxy(window.WebSocket, {
+      construct: function (target, args, newTarget) {
+        var ws = Reflect.construct(target, args, newTarget);
+        lastNetworkActivity = Date.now();
+        ws.addEventListener("message", onWsMessage);
+        ws.addEventListener("open", onWsOpen);
+        return ws;
+      }
+    });
+  }
+
+  function pingServer(onSuccess, onError, force) {
+    var now = Date.now();
+    if (!force && (now - lastPingSuccess < 3000)) {
+      if (onSuccess) onSuccess();
+      return;
+    }
+
+    if (!activePingPromise) {
+      activePingPromise = fetch("/__agy/api/signin/status", { credentials: "same-origin", cache: "no-store" })
+        .then(function (r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json().catch(function () { return {}; });
+        })
+        .then(function (data) {
+          activePingPromise = null;
+          if (data && data.available === false) {
+            throw new Error("Language server unavailable");
+          }
+          lastPingSuccess = Date.now();
+        })
+        .catch(function (err) {
+          activePingPromise = null;
+          throw err;
+        });
+    }
+
+    activePingPromise
+      .then(function () {
+        if (onSuccess) onSuccess();
+      })
+      .catch(function (err) {
+        if (onError) onError(err);
+      });
+  }
+
+  // 1. Auto-dismiss "Lost connection" banner ONLY when server is verified alive
+  function checkAndDismissLostConnectionBanner() {
+    var banners = document.querySelectorAll('div[data-testid="feature-banner"]');
+    if (!banners || banners.length === 0) return;
+
+    banners.forEach(function (b) {
+      var text = (b.textContent || "").toLowerCase();
+      if (text.indexOf("lost connection") !== -1 || text.indexOf("reconnecting") !== -1 || text.indexOf("연결") !== -1) {
+        // Probe server actively; dismiss if OK, restore banner if connection actually down
+        pingServer(function () {
+          if (b.style.display !== "none") {
+            b.style.setProperty("display", "none", "important");
+          }
+        }, function () {
+          if (b.style.display === "none") {
+            b.style.removeProperty("display");
+          }
+        });
+      }
+    });
+  }
+
+  // 2. Watchdog: Recover if conversation loading spinner is stuck > 30s AND network is completely idle (>5s)
+  var stuckTimerStart = 0;
+  var currentPath = window.location.pathname;
+
+  function checkConversationSpinnerStuck() {
+    if (window.location.pathname.indexOf("/c/") !== 0) {
+      stuckTimerStart = 0;
+      return;
+    }
+
+    if (window.location.pathname !== currentPath) {
+      currentPath = window.location.pathname;
+      stuckTimerStart = 0;
+    }
+
+    var convoView = document.querySelector('div[data-testid="conversation-view"]');
+    if (!convoView) {
+      stuckTimerStart = 0;
+      return;
+    }
+
+    var spinner = convoView.querySelector('.animate-spin, [name="progress_activity"]');
+    var hasMessages = convoView.querySelector('[data-turn-content], [data-testid="turn-content"], [data-testid="user-input-step"], .turn-content, [data-testid="autoscroll-viewport"] [role="region"], [data-testid="autoscroll-viewport"] > div > div');
+
+    if (hasMessages) {
+      // Conversation loaded successfully; reset reload retry circuit breaker
+      sessionStorage.removeItem("agy_stuck_reload_count");
+      sessionStorage.removeItem("agy_stuck_reload");
+      stuckTimerStart = 0;
+      return;
+    }
+
+    if (spinner && !hasMessages) {
+      var now = Date.now();
+      // If network communication is actively ongoing (e.g. streaming large conversation/summaries), defer stuck timer
+      if (now - lastNetworkActivity < 5000) {
+        stuckTimerStart = now;
+        return;
+      }
+
+      if (!stuckTimerStart) {
+        stuckTimerStart = now;
+      } else if (now - stuckTimerStart > 30000) {
+        // Guard against losing user draft in composer
+        var composer = document.querySelector('[contenteditable="true"]');
+        if (composer && (composer.textContent || "").trim().length > 0) {
+          return;
+        }
+
+        // Circuit breaker: stop reloading if maximum attempts reached
+        var reloadCount = parseInt(sessionStorage.getItem("agy_stuck_reload_count") || "0", 10);
+        var isConvoRoute = window.location.pathname.startsWith("/c/");
+
+        if (reloadCount >= MAX_RELOAD_ATTEMPTS) {
+          console.warn("[agy-watchdog] Conversation spinner stuck > 30s, but max reload attempts reached (circuit breaker triggered)");
+          if (isConvoRoute) {
+            sessionStorage.removeItem("agy_stuck_reload_count");
+            sessionStorage.removeItem("agy_stuck_reload");
+            window.location.href = "/";
+          }
+          return;
+        }
+
+        var lastReload = parseInt(sessionStorage.getItem("agy_stuck_reload") || "0", 10);
+        if (now - lastReload > 30000) {
+          // Verify server is alive before reloading; never reload into a dead server!
+          pingServer(function () {
+            sessionStorage.setItem("agy_stuck_reload", Date.now().toString());
+            sessionStorage.setItem("agy_stuck_reload_count", (reloadCount + 1).toString());
+            if (reloadCount >= 1 && isConvoRoute) {
+              console.warn("[agy-watchdog] Conversation spinner stuck after reload, redirecting to home view");
+              sessionStorage.removeItem("agy_stuck_reload_count");
+              sessionStorage.removeItem("agy_stuck_reload");
+              window.location.href = "/";
+              return;
+            }
+            console.warn("[agy-watchdog] Conversation spinner stuck > 30s with idle network and live server (attempt " + (reloadCount + 1) + "/" + MAX_RELOAD_ATTEMPTS + "), recovering connection via clean reload");
+            window.location.reload();
+          });
+        }
+      }
+    } else {
+      stuckTimerStart = 0;
+    }
+  }
+
+  // 3. Watchdog: Recover if #root remains completely empty > 15s while visible and network is idle (>5s)
+  var emptyRootTimerStart = 0;
+
+  function checkEmptyRootStuck() {
+    if (document.visibilityState === "hidden") {
+      emptyRootTimerStart = 0;
+      return;
+    }
+
+    var root = document.getElementById("root");
+    if (!root) return;
+
+    if (root.children && root.children.length > 0) {
+      if (emptyRootTimerStart || sessionStorage.getItem("agy_empty_root_reload_count")) {
+        sessionStorage.removeItem("agy_empty_root_reload_count");
+        sessionStorage.removeItem("agy_empty_root_reload");
+      }
+      emptyRootTimerStart = 0;
+      return;
+    }
+
+    var now = Date.now();
+    if (now - lastNetworkActivity < 5000) {
+      emptyRootTimerStart = now;
+      return;
+    }
+
+    if (!emptyRootTimerStart) {
+      emptyRootTimerStart = now;
+      return;
+    }
+
+    if (now - emptyRootTimerStart > 15000) {
+      var reloadCount = parseInt(sessionStorage.getItem("agy_empty_root_reload_count") || "0", 10);
+      if (reloadCount >= MAX_RELOAD_ATTEMPTS) {
+        return;
+      }
+      var lastReload = parseInt(sessionStorage.getItem("agy_empty_root_reload") || "0", 10);
+      if (now - lastReload > 15000) {
+        pingServer(function () {
+          sessionStorage.setItem("agy_empty_root_reload", Date.now().toString());
+          sessionStorage.setItem("agy_empty_root_reload_count", (reloadCount + 1).toString());
+          console.warn("[agy-watchdog] Empty #root stuck > 15s with idle network and live server, recovering via clean reload");
+          window.location.reload();
+        });
+      }
+    }
+  }
+
+  // Debounced DOM observer via requestAnimationFrame to eliminate streaming layout churn
+  var domCheckTimer = null;
+  function scheduleDOMCheck() {
+    if (domCheckTimer) return;
+    domCheckTimer = requestAnimationFrame(function () {
+      domCheckTimer = null;
+      checkAndDismissLostConnectionBanner();
+      checkConversationSpinnerStuck();
+      checkEmptyRootStuck();
+    });
+  }
+
+  var watchdogObserver = new MutationObserver(scheduleDOMCheck);
+
+  function initWatchdog() {
+    if (document.body) {
+      // childList and subtree are sufficient; omit characterData to prevent token streaming jank
+      watchdogObserver.observe(document.body, { childList: true, subtree: true });
+    }
+
+    setInterval(function () {
+      checkAndDismissLostConnectionBanner();
+      checkConversationSpinnerStuck();
+      checkEmptyRootStuck();
+    }, 1000);
+
+    document.addEventListener("keydown", function (e) {
+      if (e.isComposing || e.keyCode === 229) return;
+      if (e.key === "Enter") {
+        pingServer(checkAndDismissLostConnectionBanner);
+      }
+    }, true);
+
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") {
+        stuckTimerStart = 0;
+        emptyRootTimerStart = 0;
+        pingServer(checkAndDismissLostConnectionBanner);
+      }
+    });
+
+    window.addEventListener("pageshow", function () {
+      stuckTimerStart = 0;
+      emptyRootTimerStart = 0;
+      pingServer(checkAndDismissLostConnectionBanner);
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initWatchdog);
+  } else {
+    initWatchdog();
+  }
+})();
+</script>`
+
+// connectionPrewarmScript starts the RPC socket and its warm-up request from the
+// document head and hands both to the bundle when it asks for them.
+//
+// The bundle opens its socket as: fetch(https URL, no-cors), then new WebSocket.
+// Both are replayed here. The warm-up request is shared rather than repeated, and
+// the socket is returned from the WebSocket constructor in place of a new one.
+// A socket the bundle never claims is closed after 120 seconds, and one that
+// receives a frame before it is claimed is dropped so no message can be missed.
+// Any failure falls back to the bundle opening its own connection.
+//
+// The bundle ignores the result of its warm-up request and catches a failure of
+// it, so sharing a promise that resolves to undefined on error is safe. The
+// replacement WebSocket is a plain function rather than a Proxy. It keeps
+// instanceof and the static constants, but a subclass of WebSocket would not
+// receive the early socket.
+const connectionPrewarmScript = `<script id="agy-connection-prewarm">
+(function () {
+  try {
+    if (window.__agyPrewarm || !window.WebSocket || !window.fetch) return;
+    window.__agyPrewarm = 1;
+
+    // The bundle reads the same parameters to pick its transport. When it will
+    // use fetch it never asks for the socket, so do not open one.
+    // Skip prewarming on onboarding or sign-in routes where RPC sockets are never opened.
+    var path = location.pathname || "/";
+    if (path === "/onboarding" || path.indexOf("/__agy/") === 0) return;
+
+    var query = new URLSearchParams(location.search);
+    var useWS = query.get("useWebSocket");
+    if (useWS !== null ? useWS !== "true" : query.get("wsTransport") === "1") return;
+
+    var PATH = "/connect-websocket";
+    var secure = location.protocol === "https:";
+    var wsUrl = (secure ? "wss:" : "ws:") + "//" + location.host + PATH;
+    var NativeWS = window.WebSocket;
+    var nativeFetch = window.fetch;
+    var warm = null;
+    var pre = null;
+    var claimed = false;
+    var expiry = null;
+    var createdAt = Date.now();
+    var hidden = Boolean(typeof document !== "undefined" && document.visibilityState === "hidden");
+
+    var drop = function () {
+      if (claimed) return;
+      warm = null;
+      if (!pre) return;
+      var s = pre;
+      pre = null;
+      try { s.close(); } catch (e) {}
+    };
+
+    if (!hidden && secure) {
+      warm = nativeFetch.call(window, location.origin + PATH, { credentials: "include", mode: "no-cors" }).catch(function () {});
+    }
+
+    if (!hidden) {
+      try {
+        pre = new NativeWS(wsUrl);
+        pre.addEventListener("close", function () { if (!claimed) pre = null; });
+        pre.addEventListener("error", function () { if (!claimed) pre = null; });
+        pre.addEventListener("message", drop);
+        expiry = setTimeout(drop, 120000);
+      } catch (e) {
+        pre = null;
+      }
+    }
+
+    if (typeof document !== "undefined" && document.addEventListener) {
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "hidden") {
+          hidden = true;
+          drop();
+        }
+      });
+    }
+    if (typeof window !== "undefined" && window.addEventListener) {
+      window.addEventListener("pagehide", function () {
+        hidden = true;
+        drop();
+      });
+    }
+
+    function isFresh() {
+      if (claimed || !pre) return false;
+      if (hidden || (typeof document !== "undefined" && document.visibilityState === "hidden")) {
+        drop();
+        return false;
+      }
+      if (Date.now() - createdAt >= 120000 || pre.readyState > 1) {
+        drop();
+        return false;
+      }
+      return true;
+    }
+
+    window.fetch = function (input, init) {
+      if (warm && init && init.mode === "no-cors" && init.credentials === "include") {
+        var url = typeof input === "string" ? input : (input && input.url) || "";
+        if (url.indexOf(location.host + PATH) !== -1) {
+          var shared = warm;
+          warm = null;
+          if (isFresh()) {
+            return Promise.resolve();
+          }
+          if (!hidden && Date.now() - createdAt < 120000) {
+            return shared;
+          }
+        }
+      }
+      return nativeFetch.apply(this || window, arguments);
+    };
+
+    function sameUrl(url) {
+      try {
+        return new URL(String(url), location.href).href === new URL(wsUrl).href;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    // The bundle assigns onopen right after construction. A socket that is
+    // already open never fires it again, so replay the event once.
+    function adopt(ws) {
+      try { ws.removeEventListener("message", drop); } catch (e) {}
+      var handler = null;
+      var fired = false;
+      function fire(ev) {
+        if (fired || !handler || ws.readyState !== 1) return;
+        fired = true;
+        try { handler.call(ws, ev); } catch (e) { setTimeout(function () { throw e; }); }
+      }
+      ws.addEventListener("open", fire);
+      var nativeAdd = ws.addEventListener;
+      ws.addEventListener = function (type, listener) {
+        nativeAdd.apply(this, arguments);
+        var call = typeof listener === "function" ? listener
+          : listener && typeof listener.handleEvent === "function" ? function (ev) { listener.handleEvent(ev); }
+          : null;
+        if (type === "open" && ws.readyState === 1 && call) {
+          setTimeout(function () {
+            if (ws.readyState !== 1) return;
+            try { call.call(ws, new Event("open")); } catch (e) { setTimeout(function () { throw e; }); }
+          }, 0);
+        }
+      };
+      Object.defineProperty(ws, "onopen", {
+        configurable: true,
+        enumerable: true,
+        get: function () { return handler; },
+        set: function (fn) {
+          handler = typeof fn === "function" ? fn : null;
+          if (handler && ws.readyState === 1 && !fired) {
+            setTimeout(function () { fire(new Event("open")); }, 0);
+          }
+        }
+      });
+    }
+
+    function WS(url, protocols) {
+      if (protocols === undefined && sameUrl(url) && isFresh()) {
+        claimed = true;
+        clearTimeout(expiry);
+        expiry = null;
+        var ws = pre;
+        pre = null;
+        adopt(ws);
+        return ws;
+      }
+      if (!claimed && pre && pre.readyState > 1) {
+        drop();
+      }
+      return protocols === undefined ? new NativeWS(url) : new NativeWS(url, protocols);
+    }
+    WS.prototype = NativeWS.prototype;
+    WS.CONNECTING = 0;
+    WS.OPEN = 1;
+    WS.CLOSING = 2;
+    WS.CLOSED = 3;
+    window.WebSocket = WS;
+  } catch (e) {}
+})();
+</script>`
