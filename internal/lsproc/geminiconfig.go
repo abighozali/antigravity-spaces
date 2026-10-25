@@ -27,14 +27,40 @@ func HasStandaloneToken(geminiDir string) bool {
 }
 
 func tokenCandidatePaths(geminiDir string) []string {
-	parent := filepath.Dir(geminiDir) // ~/.gemini
-	return []string{
-		filepath.Join(parent, "antigravity-cli", CLITokenFile),
-		filepath.Join(parent, "antigravity", CLITokenFile),
-		filepath.Join(parent, StandaloneTokenFile),
-		filepath.Join(geminiDir, StandaloneTokenFile),
-		filepath.Join(geminiDir, CLITokenFile),
+	clean := filepath.Clean(geminiDir)
+	base := filepath.Base(clean)
+	var baseGemini string
+	if base == "antigravity" || base == "antigravity-cli" {
+		baseGemini = filepath.Dir(clean)
+	} else {
+		baseGemini = clean
 	}
+	userHome := filepath.Dir(baseGemini)
+
+	raw := []string{
+		filepath.Join(baseGemini, "antigravity-cli", CLITokenFile),
+		filepath.Join(baseGemini, "antigravity", CLITokenFile),
+		filepath.Join(baseGemini, StandaloneTokenFile),
+		filepath.Join(baseGemini, CLITokenFile),
+		filepath.Join(baseGemini, "antigravity", StandaloneTokenFile),
+		filepath.Join(baseGemini, "antigravity-cli", StandaloneTokenFile),
+		filepath.Join(clean, StandaloneTokenFile),
+		filepath.Join(clean, CLITokenFile),
+	}
+	if userHome != "" && userHome != "." && userHome != "/" {
+		raw = append(raw, filepath.Join(userHome, StandaloneTokenFile))
+	}
+
+	seen := make(map[string]bool, len(raw))
+	var out []string
+	for _, p := range raw {
+		cp := filepath.Clean(p)
+		if !seen[cp] {
+			seen[cp] = true
+			out = append(out, cp)
+		}
+	}
+	return out
 }
 
 // SyncAuthTokens ensures that a valid official Google OAuth token created by

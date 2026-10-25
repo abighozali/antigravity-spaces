@@ -32,6 +32,7 @@ Modified files:
 Added files:
   Dockerfile, entrypoint.sh, docs/REA_ANALYSIS_AND_PARITY.md,
   internal/assets/vendor/** (third-party assets, see below),
+  internal/lsproc/geminiconfig_test.go,
   NOTICE (this file)
 
 Upstream files not included in this snapshot:
@@ -42,10 +43,12 @@ Upstream files not included in this snapshot:
 Summary of functional changes: Remote Control relay setting forced off
 (DisableRemoteControl), language_server launched with
 --app_data_dir antigravity-cli and OAuth token paths synchronised with the
-agy CLI, default IDE version 2.26.0, synchronous bundle pre-warm, PASSWORD
-env fallback, ReplaceAll patch support, five patches rewriting Google-hosted
-font/icon URLs to locally served /__agy/vendor/ assets, and Docker/entrypoint
-files for Hugging Face Docker Spaces.
+agy CLI (including normalized base ~/.gemini candidate path resolution across
+both cold startup and sign-in, with regression tests in
+internal/lsproc/geminiconfig_test.go), default IDE version 2.26.0, synchronous
+bundle pre-warm, PASSWORD env fallback, ReplaceAll patch support, five patches
+rewriting Google-hosted font/icon URLs to locally served /__agy/vendor/ assets,
+and Docker/entrypoint files for Hugging Face Docker Spaces.
 
 Third-party assets
 ------------------
