@@ -31,6 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     iproute2 \
     ripgrep \
     python3 \
+    sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install and verify pinned official Google Antigravity CLI (agy 1.4.7)
@@ -59,8 +60,9 @@ RUN groupadd -g 1000 worker \
     && chown -R 1000:1000 /home/worker
 
 COPY --from=builder --chown=1000:1000 /out/agy-server /usr/local/bin/agy-server
+COPY --chown=1000:1000 agy-persist.py /usr/local/bin/agy-persist
 COPY --chown=1000:1000 entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/agy-server /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/agy-server /usr/local/bin/agy-persist /usr/local/bin/entrypoint.sh
 
 USER 1000:1000
 WORKDIR /home/worker/workspace

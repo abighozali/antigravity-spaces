@@ -1,0 +1,37 @@
+name: Bug Report
+description: Report a persistence, proxy, bundle-rewriter, or container lifecycle issue
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Security Reminder:** Never include passwords, `credentials.json` hashes, OAuth tokens, or private conversation transcripts in an issue.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Concise description of the issue and the lifecycle operation involved (e.g., startup, soft restart, factory rebuild, OAuth sign-in).
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Commit / Version Info
+      description: Commit SHA of `antigravity-spaces` and storage mode (`hf-private-bucket`, `persistent-volume`, or `ephemeral-container`).
+      placeholder: "e.g., main @ <sha>, storage=hf-private-bucket"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Exact steps or lifecycle sequence that triggers the behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized Logs
+      description: Relevant output from `entrypoint.sh`, `agy-persist`, or `agy-server` (redact any tokens or internal URLs).
+      render: shell

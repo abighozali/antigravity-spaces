@@ -9,7 +9,7 @@
 .config/
 
 # Compiled binaries & runtime artifacts
-agy-server
+/agy-server
 __pycache__/
 *.py[cod]
 *$py.class

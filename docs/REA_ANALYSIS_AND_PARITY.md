@@ -77,9 +77,10 @@ Both `agy --hub` (`1.4.7`) and `language_server --standalone --subclient_type hu
 
 1. **Hosted `antigravity.google.com` vs Official Local Jetski Hub UI**:
    - The hosted `https://antigravity.google.com` web app is Google's cloud remote-control client, which connects to local workers over Google's proprietary Remote Control relay (`remoteControlEnabled: true`).
-   - Because remote-control relays and external tunnels are prohibited for this deployment, Worker 2 serves the **official local Jetski WebUI** embedded in Google's `language_server` directly over Hugging Face Spaces' native HTTPS router (`https://abighozali-agy-worker-2.hf.space`) with `remoteControlEnabled: false`.
+   - Because remote-control relays and external tunnels are disabled in this deployment, `agy-server` serves the **official local Jetski WebUI** embedded in Google's `language_server` directly over Hugging Face Spaces' native HTTPS router (`https://<owner>-<space>.hf.space`) with `remoteControlEnabled: false`.
 2. **Per-Worker Independent Google OAuth Session**:
-   - Per requirement ("do not copy OAuth sessions between workers"), Worker 2 does not contain the Codespace's Google OAuth token baked into its Docker image or HF Space repository.
-   - After unlocking `/__agy/login` on Worker 2, the user completes Google sign-in once at `/__agy/signin` (which invokes the official `LanguageServerService/Login` RPC, displays the official `accounts.google.com` authorization link, and exchanges the pasted `http://localhost:<port>/oauth-callback?...` redirect URL on Worker 2).
-3. **Ephemeral Free-Tier HF Storage Across Container Rebuilds**:
-   - On free-tier Docker Spaces without paid persistent storage (`hf_oauth` / persistent `/data` volume), `~/.gemini` persists across process restarts inside the running container, and can be backed up via HF Secrets, but a full Space container rebuild resets container disk state requiring re-authentication at `/__agy/signin` unless the token is stored in an HF Secret.
+   - OAuth sessions are never baked into the Docker image or shared across workers.
+   - After unlocking `/__agy/login`, the operator completes Google sign-in once at `/__agy/signin` (which invokes the official `LanguageServerService/Login` RPC, displays the official `accounts.google.com` authorization link, and exchanges the pasted `http://localhost:<port>/oauth-callback?...` redirect URL on the worker).
+3. **Storage Persistence Across Container Rebuilds**:
+   - Container local disk (`/home/worker`) on Hugging Face Spaces is ephemeral across Factory Rebuilds, Pause/Resume, Sleep/Wake, and node rescheduling.
+   - Mounting a private Hugging Face Storage Bucket at `/buckets/private` (or a persistent volume at `/data`) enables `agy-persist` to persist and self-heal SQLite conversation databases, transcripts, project definitions, OAuth tokens, and server credentials across container rebuilds. See [`README.md`](../README.md) for exact durability guarantees and RPO boundaries.

@@ -53,6 +53,9 @@ type runner struct {
 	// is what lets the sign-in page drive its OAuth flow.
 	shimURLFile string
 
+	launchedLS     *exec.Cmd
+	launchedLSDone chan struct{}
+
 	mu                sync.Mutex
 	generatedPassword string
 }
@@ -277,9 +280,23 @@ func (r *runner) start() error {
 	_ = publicServer.Shutdown(ctx)
 	_ = localServer.Shutdown(ctx)
 	_ = sessions.Flush()
+	r.stopLanguageServer(4 * time.Second)
 
 	step("Stopped")
 	return nil
+}
+
+func (r *runner) stopLanguageServer(timeout time.Duration) {
+	if r.launchedLS == nil || r.launchedLS.Process == nil {
+		return
+	}
+	_ = r.launchedLS.Process.Signal(syscall.SIGTERM)
+	if r.launchedLSDone != nil {
+		select {
+		case <-r.launchedLSDone:
+		case <-time.After(timeout):
+		}
+	}
 }
 
 func listen(host string, port int) (net.Listener, error) {
@@ -371,7 +388,13 @@ func (r *runner) resolveHeadless(ctx context.Context) (*lsproc.Instance, error) 
 	if err != nil {
 		return nil, err
 	}
-	go func() { _ = cmd.Wait() }()
+	lsDone := make(chan struct{})
+	r.launchedLS = cmd
+	r.launchedLSDone = lsDone
+	go func() {
+		_ = cmd.Wait()
+		close(lsDone)
+	}()
 
 	instance, err := r.waitForServer(ctx, 120*time.Second, lsproc.Filter{PID: cmd.Process.Pid}, logPath)
 	if err != nil {

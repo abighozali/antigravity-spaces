@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build & Test (Go + Persistence Engine)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install sqlite3 CLI
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends sqlite3
+
+      - name: Verify Go vet, build, and tests
+        run: |
+          go vet ./...
+          go build -trimpath -ldflags="-s -w" -o agy-server ./cmd/agy-server
+          rm -f agy-server
+          go test -v ./internal/...
+
+      - name: Verify entrypoint and persistence engine
+        run: |
+          bash -n entrypoint.sh
+          python3 -m py_compile agy-persist.py agy_persist_test.py
+          python3 -m unittest -v agy_persist_test.py

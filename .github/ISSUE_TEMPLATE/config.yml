@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security Vulnerability Report
+    url: https://github.com/abighozali/antigravity-spaces/security/advisories/new
+    about: Report a security issue privately via GitHub Security Advisories.
+  - name: Upstream AFSlayer/antigravity-server
+    url: https://github.com/AFSlayer/antigravity-server
+    about: Upstream repository for core proxy and mobile patch questions.

@@ -12,9 +12,6 @@ upstream code reused unchanged. It is not an independent from-scratch work and
 is not affiliated with, endorsed by, or supported by Google. See DISCLAIMER.md
 (upstream notice, reproduced unchanged).
 
-This snapshot corresponds to commit 5228931111b62795ffa136a8d528b0fc87e330c7
-of the private working repository it was published from.
-
 Changes relative to upstream (Apache-2.0 Section 4(b))
 ------------------------------------------------------
 Modified files:
@@ -30,25 +27,42 @@ Modified files:
   internal/signin/signin.go
 
 Added files:
-  Dockerfile, entrypoint.sh, docs/REA_ANALYSIS_AND_PARITY.md,
-  internal/assets/vendor/** (third-party assets, see below),
-  internal/lsproc/geminiconfig_test.go,
+  Dockerfile
+  entrypoint.sh
+  agy-persist.py
+  agy_persist_test.py
+  CONTRIBUTING.md
+  SECURITY.md
   NOTICE (this file)
+  docs/REA_ANALYSIS_AND_PARITY.md
+  .github/workflows/ci.yml
+  .github/ISSUE_TEMPLATE/bug_report.yml
+  .github/ISSUE_TEMPLATE/config.yml
+  .github/pull_request_template.md
+  internal/assets/vendor/** (third-party assets, see below)
+  internal/lsproc/geminiconfig_test.go
 
 Upstream files not included in this snapshot:
-  .goreleaser.yaml, SECURITY.md, README.{es,ja,ko,pt-BR,zh-CN}.md,
+  .goreleaser.yaml, README.{es,ja,ko,pt-BR,zh-CN}.md,
   deploy/*, docs/assets/*, docs/index.html, scripts/*
-  (LICENSE and DISCLAIMER.md were restored unchanged for publication.)
+  (LICENSE and DISCLAIMER.md are preserved unchanged from upstream.)
 
-Summary of functional changes: Remote Control relay setting forced off
-(DisableRemoteControl), language_server launched with
---app_data_dir antigravity-cli and OAuth token paths synchronised with the
-agy CLI (including normalized base ~/.gemini candidate path resolution across
-both cold startup and sign-in, with regression tests in
-internal/lsproc/geminiconfig_test.go), default IDE version 2.26.0, synchronous
-bundle pre-warm, PASSWORD env fallback, ReplaceAll patch support, five patches
-rewriting Google-hosted font/icon URLs to locally served /__agy/vendor/ assets,
-and Docker/entrypoint files for Hugging Face Docker Spaces.
+Summary of functional changes:
+  1. Remote Control relay setting forced off (DisableRemoteControl in both
+     ~/.gemini/settings.json and ~/.gemini/config/config.json).
+  2. language_server launched with --app_data_dir antigravity-cli and OAuth
+     token paths synchronized with the agy CLI (including normalized base
+     ~/.gemini candidate path resolution across both cold startup and sign-in,
+     with regression tests in internal/lsproc/geminiconfig_test.go), plus
+     graceful SIGTERM propagation to the child language_server on shutdown in
+     cmd/agy-server/run.go.
+  3. Default IDE version 2.26.0, synchronous bundle pre-warm, PASSWORD env
+     fallback, ReplaceAll patch support, and five patches rewriting
+     Google-hosted font/icon URLs to locally served /__agy/vendor/ assets.
+  4. Docker, entrypoint.sh, and agy-persist.py providing transactional
+     persistence, SQLite Online Backup snapshotting, atomic fsync+rename writes,
+     rolling backups, and startup self-healing recovery on Hugging Face Storage
+     Buckets (/buckets/private) and persistent volumes (/data).
 
 Third-party assets
 ------------------
